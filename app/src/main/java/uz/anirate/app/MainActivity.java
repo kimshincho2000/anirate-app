@@ -461,6 +461,19 @@ public class MainActivity extends AppCompatActivity {
     // Direct Video Download to Movies/AniRate
     private void startDirectDownload(String url, String fileName) {
         try {
+            if (url == null || url.trim().isEmpty()) {
+                Toast.makeText(MainActivity.this, "Video manzili topilmadi", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            url = url.trim();
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                if (url.startsWith("/")) {
+                    url = "https://anirate.wwwz.uz" + url;
+                } else {
+                    url = "https://anirate.wwwz.uz/" + url;
+                }
+            }
+
             if (fileName == null || fileName.trim().isEmpty()) {
                 fileName = "AniRate_Episode_" + System.currentTimeMillis() + ".mp4";
             }

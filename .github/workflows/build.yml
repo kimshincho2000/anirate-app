@@ -34,7 +34,7 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p output
-          cp app/build/outputs/apk/debug/*.apk output/Anirate-v1.3.1.apk
+          cp app/build/outputs/apk/debug/*.apk output/Anirate-v1.3.2.apk
           if [ -f ~/.android/debug.keystore ]; then
             cp ~/.android/debug.keystore output/debug.keystore
           fi
@@ -42,16 +42,16 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Anirate-v1.3.1-APK
-          path: output/Anirate-v1.3.1.apk
+          name: Anirate-v1.3.2-APK
+          path: output/Anirate-v1.3.2.apk
 
       - name: Release APK
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.3.1
-          name: "Anirate Android App v1.3.1 (Instant Admin Unlock & Protection Control)"
-          body: "Official Anirate Android Application v1.3.1 with instant in-app Admin unlock dialog, persistent admin session, and FLAG_SECURE control."
-          files: output/Anirate-v1.3.1.apk
+          tag_name: v1.3.2
+          name: "Anirate Android App v1.3.2 (Fix URI download & UI adjustments)"
+          body: "Official Anirate Android Application v1.3.2 with fixed relative URI downloader, floating button margin fix, and instant admin mode."
+          files: output/Anirate-v1.3.2.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
