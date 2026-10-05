@@ -1624,68 +1624,91 @@ public class MainActivity extends AppCompatActivity {
         }, delay);
     }
 
+    private WebResourceResponse createWebResource(String mimeType, String encoding, InputStream is) {
+        WebResourceResponse response = new WebResourceResponse(mimeType, encoding, is);
+        java.util.Map<String, String> headers = new java.util.HashMap<>();
+        headers.put("Access-Control-Allow-Origin", "*");
+        headers.put("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+        headers.put("Access-Control-Allow-Headers", "*");
+        headers.put("Cache-Control", "public, max-age=31536000, immutable");
+        response.setResponseHeaders(headers);
+        return response;
+    }
+
     @Nullable
     private WebResourceResponse getOfflineResource(String url) {
         try {
             // 1. FontAwesome 6.5.1 CSS & WebFonts
-            if (url.contains("font-awesome/6.5.1/css/all.min.css")) {
-                return new WebResourceResponse("text/css", "UTF-8", getAssets().open("web/vendor/fontawesome/all.min.css"));
+            if (url.contains("fontawesome/all.min.css") || url.contains("font-awesome/6.5.1/css/all.min.css") || url.contains("font-awesome/all.min.css")) {
+                return createWebResource("text/css", "UTF-8", getAssets().open("web/vendor/fontawesome/all.min.css"));
             }
-            if (url.contains("webfonts/fa-solid-900.woff2")) {
-                return new WebResourceResponse("font/woff2", "binary", getAssets().open("web/vendor/fontawesome/webfonts/fa-solid-900.woff2"));
+            if (url.contains("fa-solid-900.woff2")) {
+                return createWebResource("font/woff2", null, getAssets().open("web/vendor/fontawesome/webfonts/fa-solid-900.woff2"));
             }
-            if (url.contains("webfonts/fa-brands-400.woff2")) {
-                return new WebResourceResponse("font/woff2", "binary", getAssets().open("web/vendor/fontawesome/webfonts/fa-brands-400.woff2"));
+            if (url.contains("fa-solid-900.ttf")) {
+                return createWebResource("font/ttf", null, getAssets().open("web/vendor/fontawesome/webfonts/fa-solid-900.ttf"));
             }
-            if (url.contains("webfonts/fa-regular-400.woff2")) {
-                return new WebResourceResponse("font/woff2", "binary", getAssets().open("web/vendor/fontawesome/webfonts/fa-regular-400.woff2"));
+            if (url.contains("fa-brands-400.woff2")) {
+                return createWebResource("font/woff2", null, getAssets().open("web/vendor/fontawesome/webfonts/fa-brands-400.woff2"));
             }
-            if (url.contains("webfonts/fa-solid-900.ttf")) {
-                return new WebResourceResponse("font/ttf", "binary", getAssets().open("web/vendor/fontawesome/webfonts/fa-solid-900.ttf"));
+            if (url.contains("fa-brands-400.ttf")) {
+                return createWebResource("font/ttf", null, getAssets().open("web/vendor/fontawesome/webfonts/fa-brands-400.ttf"));
+            }
+            if (url.contains("fa-regular-400.woff2")) {
+                return createWebResource("font/woff2", null, getAssets().open("web/vendor/fontawesome/webfonts/fa-regular-400.woff2"));
+            }
+            if (url.contains("fa-regular-400.ttf")) {
+                return createWebResource("font/ttf", null, getAssets().open("web/vendor/fontawesome/webfonts/fa-regular-400.ttf"));
+            }
+            if (url.contains("fa-v4compatibility.woff2")) {
+                return createWebResource("font/woff2", null, getAssets().open("web/vendor/fontawesome/webfonts/fa-v4compatibility.woff2"));
+            }
+            if (url.contains("fa-v4compatibility.ttf")) {
+                return createWebResource("font/ttf", null, getAssets().open("web/vendor/fontawesome/webfonts/fa-v4compatibility.ttf"));
             }
 
             // 2. Swiper 11 CSS & JS
             if (url.contains("swiper@11/swiper-bundle.min.css") || url.contains("swiper-bundle.min.css")) {
-                return new WebResourceResponse("text/css", "UTF-8", getAssets().open("web/vendor/swiper/swiper-bundle.min.css"));
+                return createWebResource("text/css", "UTF-8", getAssets().open("web/vendor/swiper/swiper-bundle.min.css"));
             }
             if (url.contains("swiper@11/swiper-bundle.min.js") || url.contains("swiper-bundle.min.js")) {
-                return new WebResourceResponse("application/javascript", "UTF-8", getAssets().open("web/vendor/swiper/swiper-bundle.min.js"));
+                return createWebResource("application/javascript", "UTF-8", getAssets().open("web/vendor/swiper/swiper-bundle.min.js"));
             }
 
             // 3. Plyr 3.7.8 CSS & JS
             if (url.contains("plyr@3.7.8/dist/plyr.css") || url.contains("plyr.css")) {
-                return new WebResourceResponse("text/css", "UTF-8", getAssets().open("web/vendor/plyr/plyr.css"));
+                return createWebResource("text/css", "UTF-8", getAssets().open("web/vendor/plyr/plyr.css"));
             }
             if (url.contains("plyr@3.7.8/dist/plyr.polyfilled.min.js") || url.contains("plyr.polyfilled.min.js")) {
-                return new WebResourceResponse("application/javascript", "UTF-8", getAssets().open("web/vendor/plyr/plyr.polyfilled.min.js"));
+                return createWebResource("application/javascript", "UTF-8", getAssets().open("web/vendor/plyr/plyr.polyfilled.min.js"));
             }
 
             // 4. AniRate CSS & JS
             if (url.contains("/assets/css/style.css")) {
-                return new WebResourceResponse("text/css", "UTF-8", getAssets().open("web/css/style.css"));
+                return createWebResource("text/css", "UTF-8", getAssets().open("web/css/style.css"));
             }
             if (url.contains("/assets/css/player.css")) {
-                return new WebResourceResponse("text/css", "UTF-8", getAssets().open("web/css/player.css"));
+                return createWebResource("text/css", "UTF-8", getAssets().open("web/css/player.css"));
             }
             if (url.contains("/assets/js/main.js")) {
-                return new WebResourceResponse("application/javascript", "UTF-8", getAssets().open("web/js/main.js"));
+                return createWebResource("application/javascript", "UTF-8", getAssets().open("web/js/main.js"));
             }
             if (url.contains("/assets/js/player.js")) {
-                return new WebResourceResponse("application/javascript", "UTF-8", getAssets().open("web/js/player.js"));
+                return createWebResource("application/javascript", "UTF-8", getAssets().open("web/js/player.js"));
             }
 
             // 5. AniRate Core Images
             if (url.contains("/assets/img/logo.jpg")) {
-                return new WebResourceResponse("image/jpeg", "binary", getAssets().open("web/img/logo.jpg"));
+                return createWebResource("image/jpeg", null, getAssets().open("web/img/logo.jpg"));
             }
             if (url.contains("/assets/img/logo.png")) {
-                return new WebResourceResponse("image/png", "binary", getAssets().open("web/img/logo.png"));
+                return createWebResource("image/png", null, getAssets().open("web/img/logo.png"));
             }
             if (url.contains("/assets/img/icon-192.png")) {
-                return new WebResourceResponse("image/png", "binary", getAssets().open("web/img/icon-192.png"));
+                return createWebResource("image/png", null, getAssets().open("web/img/icon-192.png"));
             }
             if (url.contains("/assets/img/icon.svg")) {
-                return new WebResourceResponse("image/svg+xml", "UTF-8", getAssets().open("web/img/icon.svg"));
+                return createWebResource("image/svg+xml", "UTF-8", getAssets().open("web/img/icon.svg"));
             }
         } catch (Exception ignored) {}
         return null;
