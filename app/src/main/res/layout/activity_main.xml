@@ -147,12 +147,22 @@
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="12dp"
                 android:layout_weight="1"
                 android:text="📥 Saqlangan Animelar"
                 android:textColor="@color/white"
-                android:textSize="18sp"
+                android:textSize="16sp"
                 android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btn_admin_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:backgroundTint="#26FFFFFF"
+                android:text="🔑 Admin"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:paddingHorizontal="10dp" />
         </LinearLayout>
 
         <!-- Empty state text if no downloads -->

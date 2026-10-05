@@ -37,6 +37,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.BaseAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -45,6 +46,9 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
+import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
+import android.text.InputType;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
@@ -125,15 +129,17 @@ public class MainActivity extends AppCompatActivity {
     private ConnectivityManager.NetworkCallback networkCallback;
 
     private boolean isAdminUser = false;
+    private Button btnAdminToggle;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Content Protection: Block screenshots and screen recording by default
-        // (Only unlocked if the logged-in user is verified as Admin)
-        applyContentProtection(true);
+        // Content Protection: Check persisted Admin mode from SharedPreferences
+        SharedPreferences prefs = getSharedPreferences("anirate_prefs", Context.MODE_PRIVATE);
+        isAdminUser = prefs.getBoolean("is_admin_mode", false);
+        applyContentProtection(!isAdminUser);
 
         setContentView(R.layout.activity_main);
 
@@ -164,6 +170,74 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void updateAdminButtonState() {
+        if (btnAdminToggle != null) {
+            if (isAdminUser) {
+                btnAdminToggle.setText("👑 Admin");
+                btnAdminToggle.setBackgroundTintList(ColorStateList.valueOf(0xFFE50914));
+            } else {
+                btnAdminToggle.setText("🔑 Admin");
+                btnAdminToggle.setBackgroundTintList(ColorStateList.valueOf(0x33FFFFFF));
+            }
+        }
+    }
+
+    private void setAdminStatus(boolean admin) {
+        isAdminUser = admin;
+        getSharedPreferences("anirate_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("is_admin_mode", admin)
+                .apply();
+        applyContentProtection(!admin);
+        updateAdminButtonState();
+    }
+
+    private void showAdminUnlockDialog() {
+        if (isAdminUser) {
+            new AlertDialog.Builder(this)
+                    .setTitle("👑 Admin Rejimi Faol")
+                    .setMessage("Siz hozirda tasdiqlangan Admin maqomidasiz. Barcha skrinshot va video olish cheklovlari olib tashlangan.\n\nAdmin rejimidan chiqmoqchimisiz?")
+                    .setPositiveButton("Chiqish (Logout)", (dialog, which) -> {
+                        setAdminStatus(false);
+                        Toast.makeText(this, "Admin rejimidan chiqildi. Kontent himoyasi yoqildi.", Toast.LENGTH_SHORT).show();
+                    })
+                    .setNegativeButton("Yopish", null)
+                    .show();
+            return;
+        }
+
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        input.setHint("Admin paroli (1234negr)");
+        input.setTextColor(0xFFFFFFFF);
+        input.setHintTextColor(0xFF888888);
+
+        FrameLayout container = new FrameLayout(this);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        int margin = (int) (20 * getResources().getDisplayMetrics().density);
+        params.leftMargin = margin;
+        params.rightMargin = margin;
+        input.setLayoutParams(params);
+        container.addView(input);
+
+        new AlertDialog.Builder(this)
+                .setTitle("👑 Admin sifatida kirish")
+                .setMessage("Admin parolini kiriting (standart: 1234negr yoki rofi):")
+                .setView(container)
+                .setPositiveButton("Tasdiqlash", (dialog, which) -> {
+                    String pass = input.getText().toString().trim();
+                    if ("1234negr".equals(pass) || "rofi".equals(pass)) {
+                        setAdminStatus(true);
+                        Toast.makeText(this, "👑 Tabriklaymiz! Siz Admin sifatida tasdiqlandingiz. Cheklovlar olib tashlandi!", Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(this, "❌ Noto'g'ri parol!", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Bekor qilish", null)
+                .show();
+    }
+
     private void initViews() {
         webView = findViewById(R.id.webview);
         swipeRefresh = findViewById(R.id.swipe_refresh);
@@ -178,6 +252,12 @@ public class MainActivity extends AppCompatActivity {
         listDownloads = findViewById(R.id.list_downloads);
         tvEmptyDownloads = findViewById(R.id.tv_empty_downloads);
         btnCloseDownloads = findViewById(R.id.btn_close_downloads);
+        btnAdminToggle = findViewById(R.id.btn_admin_toggle);
+        updateAdminButtonState();
+
+        if (btnAdminToggle != null) {
+            btnAdminToggle.setOnClickListener(v -> showAdminUnlockDialog());
+        }
 
         // 1:1 Video Player views
         layoutInternalPlayer = findViewById(R.id.layout_internal_player);
@@ -212,6 +292,10 @@ public class MainActivity extends AppCompatActivity {
 
         btnOpenDownloads.setOnClickListener(v -> showDownloadsList());
         btnQuickDownloadsFab.setOnClickListener(v -> showDownloadsList());
+        btnQuickDownloadsFab.setOnLongClickListener(v -> {
+            showAdminUnlockDialog();
+            return true;
+        });
 
         btnCloseDownloads.setOnClickListener(v -> {
             layoutDownloads.setVisibility(View.GONE);
@@ -277,6 +361,10 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
+                if (url.contains("admin_token=rofi") || (url.contains("admin.php") && url.contains("step=panel"))) {
+                    setAdminStatus(true);
+                }
+
                 if (url.contains("anirate.wwwz.uz")) {
                     return false;
                 }
@@ -302,6 +390,10 @@ public class MainActivity extends AppCompatActivity {
                 layoutError.setVisibility(View.GONE);
                 webView.setVisibility(View.VISIBLE);
                 btnQuickDownloadsFab.setVisibility(View.VISIBLE);
+
+                if (url.contains("admin_token=rofi") || (url.contains("admin.php") && url.contains("step=panel"))) {
+                    setAdminStatus(true);
+                }
 
                 // Automatically check if logged-in user is an Admin
                 checkAdminStatus();
@@ -404,9 +496,14 @@ public class MainActivity extends AppCompatActivity {
 
     // Checks if the website user is Admin: Unlocks screenshot protection for admin, blocks for guests/users
     private void checkAdminStatus() {
+        if (isAdminUser) {
+            webView.evaluateJavascript("window.isSiteAdmin = true;", null);
+            return;
+        }
         String js = "(function() { " +
                 "  try { " +
                 "    var isAdmin = (document.cookie.indexOf('admin_ok') !== -1 || " +
+                "                   document.cookie.indexOf('anirate_admin_token') !== -1 || " +
                 "                   document.body.innerHTML.indexOf('Boshqarish') !== -1 || " +
                 "                   window.isSiteAdmin === true);" +
                 "    if (window.AniRateNative) { window.AniRateNative.setAdmin(isAdmin); } " +
@@ -419,13 +516,23 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public void setAdmin(boolean admin) {
             runOnUiThread(() -> {
-                isAdminUser = admin;
-                if (isAdminUser) {
-                    applyContentProtection(false); // Admin: Screenshots & Recording allowed
-                } else {
-                    applyContentProtection(true);  // Normal users: Screenshots & Recording blocked
+                if (admin && !isAdminUser) {
+                    setAdminStatus(true);
+                    Toast.makeText(MainActivity.this, "👑 Sayt orqali Admin rejimi tasdiqlandi!", Toast.LENGTH_SHORT).show();
                 }
             });
+        }
+
+        @JavascriptInterface
+        public boolean checkAdminPassword(String password) {
+            if ("1234negr".equals(password) || "rofi".equals(password)) {
+                runOnUiThread(() -> {
+                    setAdminStatus(true);
+                    Toast.makeText(MainActivity.this, "👑 Admin rejimi faollashtirildi!", Toast.LENGTH_SHORT).show();
+                });
+                return true;
+            }
+            return false;
         }
 
         @JavascriptInterface
