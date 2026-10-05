@@ -16,6 +16,10 @@ drawable bg_player_glass
 drawable bg_player_pill
 drawable bg_player_ripple_badge
 drawable bg_quick_downloads_fab
+drawable bg_splash_glow
+drawable bg_splash_indicator
+drawable bg_splash_logo_card
+drawable bg_splash_track
 drawable ic_check
 drawable ic_chevron_left
 drawable ic_download
@@ -78,6 +82,12 @@ id player_touch_surface
 id progress_bar
 id ripple_left
 id ripple_right
+id splash_loader_indicator
+id splash_loading_status
+id splash_logo_glow
+id splash_logo_img
+id splash_overlay
+id splash_track
 id swipe_refresh
 id tv_admin_label
 id tv_empty_downloads

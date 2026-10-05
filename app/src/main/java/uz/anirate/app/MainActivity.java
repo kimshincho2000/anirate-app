@@ -82,6 +82,12 @@ import java.util.Locale;
 import android.util.Log;
 import org.json.JSONObject;
 
+import android.animation.ObjectAnimator;
+import android.animation.PropertyValuesHolder;
+import android.animation.ValueAnimator;
+import android.webkit.WebResourceResponse;
+import androidx.annotation.Nullable;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String SITE_URL = "https://anirate.wwwz.uz";
@@ -166,6 +172,17 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar inAppBannerProgressBar;
     private final Handler bannerHandler = new Handler(Looper.getMainLooper());
     private Runnable hideBannerRunnable;
+
+    // Animated Splash Screen Loading Overlay
+    private FrameLayout splashOverlay;
+    private View splashLogoGlow;
+    private ImageView splashLogoImg;
+    private View splashLoaderIndicator;
+    private TextView splashLoadingStatus;
+    private boolean isSplashDismissed = false;
+    private long splashStartTime = 0;
+    private ObjectAnimator glowAnimator;
+    private ObjectAnimator indicatorAnimator;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -426,6 +443,14 @@ public class MainActivity extends AppCompatActivity {
                 btnQuickDownloadsFab.setVisibility(View.VISIBLE);
             }
         });
+
+        // Animated Splash Screen Loading Overlay
+        splashOverlay = findViewById(R.id.splash_overlay);
+        splashLogoGlow = findViewById(R.id.splash_logo_glow);
+        splashLogoImg = findViewById(R.id.splash_logo_img);
+        splashLoaderIndicator = findViewById(R.id.splash_loader_indicator);
+        splashLoadingStatus = findViewById(R.id.splash_loading_status);
+        setupSplashAnimation();
     }
 
     @SuppressLint({"SetJavaScriptEnabled", "ClickableViewAccessibility"})
@@ -516,6 +541,20 @@ public class MainActivity extends AppCompatActivity {
 
                 // Automatically check if logged-in user is an Admin
                 checkAdminStatus();
+                dismissSplashIfReady();
+            }
+
+            @Nullable
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                Uri uri = request.getUrl();
+                if (uri != null) {
+                    WebResourceResponse offline = getOfflineResource(uri.toString());
+                    if (offline != null) {
+                        return offline;
+                    }
+                }
+                return super.shouldInterceptRequest(view, request);
             }
 
             @Override
@@ -1506,11 +1545,150 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showOfflineScreen() {
+        dismissSplashIfReady();
         progressBar.setVisibility(View.GONE);
         swipeRefresh.setRefreshing(false);
         webView.setVisibility(View.GONE);
         btnQuickDownloadsFab.setVisibility(View.GONE);
         layoutError.setVisibility(View.VISIBLE);
+    }
+
+    private void setupSplashAnimation() {
+        if (splashOverlay == null) return;
+        splashStartTime = System.currentTimeMillis();
+
+        // 1. Logo bounce in
+        if (splashLogoImg != null) {
+            splashLogoImg.setScaleX(0.7f);
+            splashLogoImg.setScaleY(0.7f);
+            splashLogoImg.setAlpha(0f);
+            splashLogoImg.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .alpha(1f)
+                    .setDuration(700)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(1.4f))
+                    .start();
+        }
+
+        // 2. Continuous Pulsing Aura Glow
+        if (splashLogoGlow != null) {
+            PropertyValuesHolder scaleX = PropertyValuesHolder.ofFloat(View.SCALE_X, 1.0f, 1.25f);
+            PropertyValuesHolder scaleY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1.0f, 1.25f);
+            PropertyValuesHolder alpha = PropertyValuesHolder.ofFloat(View.ALPHA, 0.4f, 0.9f);
+            glowAnimator = ObjectAnimator.ofPropertyValuesHolder(splashLogoGlow, scaleX, scaleY, alpha);
+            glowAnimator.setDuration(900);
+            glowAnimator.setRepeatCount(ValueAnimator.INFINITE);
+            glowAnimator.setRepeatMode(ValueAnimator.REVERSE);
+            glowAnimator.start();
+        }
+
+        // 3. Smooth sliding loader indicator
+        if (splashLoaderIndicator != null) {
+            float trackWidth = 180 * getResources().getDisplayMetrics().density;
+            float indicatorWidth = 60 * getResources().getDisplayMetrics().density;
+            indicatorAnimator = ObjectAnimator.ofFloat(splashLoaderIndicator, "translationX", 0f, trackWidth - indicatorWidth);
+            indicatorAnimator.setDuration(1000);
+            indicatorAnimator.setRepeatCount(ValueAnimator.INFINITE);
+            indicatorAnimator.setRepeatMode(ValueAnimator.REVERSE);
+            indicatorAnimator.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+            indicatorAnimator.start();
+        }
+    }
+
+    private void dismissSplashIfReady() {
+        if (isSplashDismissed || splashOverlay == null) return;
+
+        long elapsed = System.currentTimeMillis() - splashStartTime;
+        long minDisplayTime = 1300; // minimum 1.3s smooth intro
+        long delay = Math.max(0, minDisplayTime - elapsed);
+
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (isSplashDismissed || splashOverlay == null) return;
+            isSplashDismissed = true;
+
+            splashOverlay.animate()
+                    .alpha(0f)
+                    .scaleX(1.05f)
+                    .scaleY(1.05f)
+                    .setDuration(450)
+                    .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                    .withEndAction(() -> {
+                        if (splashOverlay != null) {
+                            splashOverlay.setVisibility(View.GONE);
+                        }
+                        if (glowAnimator != null) glowAnimator.cancel();
+                        if (indicatorAnimator != null) indicatorAnimator.cancel();
+                    })
+                    .start();
+        }, delay);
+    }
+
+    @Nullable
+    private WebResourceResponse getOfflineResource(String url) {
+        try {
+            // 1. FontAwesome 6.5.1 CSS & WebFonts
+            if (url.contains("font-awesome/6.5.1/css/all.min.css")) {
+                return new WebResourceResponse("text/css", "UTF-8", getAssets().open("web/vendor/fontawesome/all.min.css"));
+            }
+            if (url.contains("webfonts/fa-solid-900.woff2")) {
+                return new WebResourceResponse("font/woff2", "binary", getAssets().open("web/vendor/fontawesome/webfonts/fa-solid-900.woff2"));
+            }
+            if (url.contains("webfonts/fa-brands-400.woff2")) {
+                return new WebResourceResponse("font/woff2", "binary", getAssets().open("web/vendor/fontawesome/webfonts/fa-brands-400.woff2"));
+            }
+            if (url.contains("webfonts/fa-regular-400.woff2")) {
+                return new WebResourceResponse("font/woff2", "binary", getAssets().open("web/vendor/fontawesome/webfonts/fa-regular-400.woff2"));
+            }
+            if (url.contains("webfonts/fa-solid-900.ttf")) {
+                return new WebResourceResponse("font/ttf", "binary", getAssets().open("web/vendor/fontawesome/webfonts/fa-solid-900.ttf"));
+            }
+
+            // 2. Swiper 11 CSS & JS
+            if (url.contains("swiper@11/swiper-bundle.min.css") || url.contains("swiper-bundle.min.css")) {
+                return new WebResourceResponse("text/css", "UTF-8", getAssets().open("web/vendor/swiper/swiper-bundle.min.css"));
+            }
+            if (url.contains("swiper@11/swiper-bundle.min.js") || url.contains("swiper-bundle.min.js")) {
+                return new WebResourceResponse("application/javascript", "UTF-8", getAssets().open("web/vendor/swiper/swiper-bundle.min.js"));
+            }
+
+            // 3. Plyr 3.7.8 CSS & JS
+            if (url.contains("plyr@3.7.8/dist/plyr.css") || url.contains("plyr.css")) {
+                return new WebResourceResponse("text/css", "UTF-8", getAssets().open("web/vendor/plyr/plyr.css"));
+            }
+            if (url.contains("plyr@3.7.8/dist/plyr.polyfilled.min.js") || url.contains("plyr.polyfilled.min.js")) {
+                return new WebResourceResponse("application/javascript", "UTF-8", getAssets().open("web/vendor/plyr/plyr.polyfilled.min.js"));
+            }
+
+            // 4. AniRate CSS & JS
+            if (url.contains("/assets/css/style.css")) {
+                return new WebResourceResponse("text/css", "UTF-8", getAssets().open("web/css/style.css"));
+            }
+            if (url.contains("/assets/css/player.css")) {
+                return new WebResourceResponse("text/css", "UTF-8", getAssets().open("web/css/player.css"));
+            }
+            if (url.contains("/assets/js/main.js")) {
+                return new WebResourceResponse("application/javascript", "UTF-8", getAssets().open("web/js/main.js"));
+            }
+            if (url.contains("/assets/js/player.js")) {
+                return new WebResourceResponse("application/javascript", "UTF-8", getAssets().open("web/js/player.js"));
+            }
+
+            // 5. AniRate Core Images
+            if (url.contains("/assets/img/logo.jpg")) {
+                return new WebResourceResponse("image/jpeg", "binary", getAssets().open("web/img/logo.jpg"));
+            }
+            if (url.contains("/assets/img/logo.png")) {
+                return new WebResourceResponse("image/png", "binary", getAssets().open("web/img/logo.png"));
+            }
+            if (url.contains("/assets/img/icon-192.png")) {
+                return new WebResourceResponse("image/png", "binary", getAssets().open("web/img/icon-192.png"));
+            }
+            if (url.contains("/assets/img/icon.svg")) {
+                return new WebResourceResponse("image/svg+xml", "UTF-8", getAssets().open("web/img/icon.svg"));
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 
     private boolean isNetworkAvailable() {

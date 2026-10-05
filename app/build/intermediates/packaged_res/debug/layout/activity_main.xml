@@ -667,4 +667,106 @@
             android:progressDrawable="@drawable/ios_notification_progress" />
     </LinearLayout>
 
+    <!-- 6. Animated Splash Screen Loading Overlay -->
+    <FrameLayout
+        android:id="@+id/splash_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#0b0d13"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <!-- Glowing Logo Container with Aura -->
+            <FrameLayout
+                android:layout_width="130dp"
+                android:layout_height="130dp">
+
+                <!-- Pulsing Aura View -->
+                <View
+                    android:id="@+id/splash_logo_glow"
+                    android:layout_width="130dp"
+                    android:layout_height="130dp"
+                    android:background="@drawable/bg_splash_glow" />
+
+                <!-- Logo Image Card -->
+                <ImageView
+                    android:id="@+id/splash_logo_img"
+                    android:layout_width="96dp"
+                    android:layout_height="96dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_splash_logo_card"
+                    android:clipToOutline="true"
+                    android:src="@mipmap/ic_launcher" />
+            </FrameLayout>
+
+            <!-- Brand Title -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="0.08"
+                    android:text="ANIRATE"
+                    android:textColor="#FFFFFF"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="0.08"
+                    android:text="UZ"
+                    android:textColor="#E50914"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:letterSpacing="0.04"
+                android:text="O'zbekistondagi №1 Anime Platformasi"
+                android:textColor="#8E8E93"
+                android:textSize="12sp" />
+
+            <!-- Animated Smooth Loader Bar Track -->
+            <FrameLayout
+                android:id="@+id/splash_track"
+                android:layout_width="180dp"
+                android:layout_height="4dp"
+                android:layout_marginTop="32dp"
+                android:background="@drawable/bg_splash_track">
+
+                <View
+                    android:id="@+id/splash_loader_indicator"
+                    android:layout_width="60dp"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_splash_indicator" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/splash_loading_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Anime olami ochilmoqda..."
+                android:textColor="#666675"
+                android:textSize="11sp" />
+
+        </LinearLayout>
+    </FrameLayout>
+
 </FrameLayout>
