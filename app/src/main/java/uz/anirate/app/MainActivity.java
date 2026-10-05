@@ -16,6 +16,7 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.media.MediaPlayer;
 import android.media.PlaybackParams;
 import android.net.ConnectivityManager;
@@ -52,6 +53,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.RemoteViews;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -74,7 +76,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
 
     private static final String SITE_URL = "https://anirate.wwwz.uz";
-    private static final String NOTIFICATION_CHANNEL_ID = "anirate_downloads_channel";
+    private static final String NOTIFICATION_CHANNEL_ID = "anirate_downloads_channel_v4";
 
     private WebView webView;
     private SwipeRefreshLayout swipeRefresh;
@@ -146,6 +148,16 @@ public class MainActivity extends AppCompatActivity {
     private boolean isAdminUser = false;
     private BroadcastReceiver downloadCompleteReceiver;
 
+    // iOS In-App Dynamic Notification Banner
+    private LinearLayout iosInAppBanner;
+    private ImageView inAppBannerIcon;
+    private TextView inAppBannerTitle;
+    private TextView inAppBannerSubtitle;
+    private TextView inAppBannerBadge;
+    private ProgressBar inAppBannerProgressBar;
+    private final Handler bannerHandler = new Handler(Looper.getMainLooper());
+    private Runnable hideBannerRunnable;
+
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -201,9 +213,11 @@ public class MainActivity extends AppCompatActivity {
             NotificationChannel channel = new NotificationChannel(
                     NOTIFICATION_CHANNEL_ID,
                     "AniRate Yuklab Olishlar",
-                    NotificationManager.IMPORTANCE_LOW
+                    NotificationManager.IMPORTANCE_HIGH
             );
             channel.setDescription("Anime qismlarini yuklab olish holati va foizi");
+            channel.enableVibration(true);
+            channel.setShowBadge(true);
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) {
                 nm.createNotificationChannel(channel);
@@ -336,6 +350,21 @@ public class MainActivity extends AppCompatActivity {
 
         if (btnAdminToggle != null) {
             btnAdminToggle.setOnClickListener(v -> showAdminUnlockDialog());
+        }
+
+        // iOS In-App Dynamic Notification Banner
+        iosInAppBanner = findViewById(R.id.ios_inapp_banner);
+        inAppBannerIcon = findViewById(R.id.inapp_banner_icon);
+        inAppBannerTitle = findViewById(R.id.inapp_banner_title);
+        inAppBannerSubtitle = findViewById(R.id.inapp_banner_subtitle);
+        inAppBannerBadge = findViewById(R.id.inapp_banner_badge);
+        inAppBannerProgressBar = findViewById(R.id.inapp_banner_progressbar);
+
+        if (iosInAppBanner != null) {
+            iosInAppBanner.setOnClickListener(v -> {
+                showDownloadsList();
+                iosInAppBanner.setVisibility(View.GONE);
+            });
         }
 
         // 1:1 Video Player views
@@ -578,6 +607,7 @@ public class MainActivity extends AppCompatActivity {
             if (dm != null) {
                 long downloadId = dm.enqueue(request);
                 Toast.makeText(MainActivity.this, "Yuklab olish boshlandi: " + fileName, Toast.LENGTH_SHORT).show();
+                updateInAppNotification("AniRate • Yuklanmoqda...", fileName, 0, false, false);
                 trackDownloadProgress(downloadId, fileName);
             }
         } catch (Exception e) {
@@ -585,7 +615,88 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // Real-Time Download Progress Notification & Percentage
+    private RemoteViews createIosNotificationView(String title, String subtitle, String badgeText, int progress, boolean isDone, boolean isFailed) {
+        RemoteViews views = new RemoteViews(getPackageName(), R.layout.notification_ios_banner);
+        views.setImageViewResource(R.id.ios_notif_icon, R.mipmap.ic_launcher);
+        views.setTextViewText(R.id.ios_notif_title, title);
+        views.setTextViewText(R.id.ios_notif_subtitle, subtitle);
+        views.setTextViewText(R.id.ios_notif_percentage, badgeText);
+
+        if (isDone) {
+            views.setTextColor(R.id.ios_notif_percentage, Color.parseColor("#34C759"));
+            views.setViewVisibility(R.id.ios_notif_progressbar, View.GONE);
+        } else if (isFailed) {
+            views.setTextColor(R.id.ios_notif_percentage, Color.parseColor("#FF3B30"));
+            views.setViewVisibility(R.id.ios_notif_progressbar, View.GONE);
+        } else {
+            views.setTextColor(R.id.ios_notif_percentage, Color.parseColor("#0A84FF"));
+            views.setViewVisibility(R.id.ios_notif_progressbar, View.VISIBLE);
+            views.setProgressBar(R.id.ios_notif_progressbar, 100, progress, false);
+        }
+        return views;
+    }
+
+    private void updateInAppNotification(String title, String subtitle, int progress, boolean isDone, boolean isFailed) {
+        runOnUiThread(() -> {
+            if (iosInAppBanner == null) return;
+
+            if (isDone) {
+                inAppBannerIcon.setImageResource(R.drawable.ic_check);
+                inAppBannerTitle.setText("AniRate • Yuklab olindi! ✨");
+                inAppBannerSubtitle.setText(subtitle + " — ko'rish uchun bosing");
+                inAppBannerBadge.setText("Tayyor");
+                inAppBannerBadge.setTextColor(Color.parseColor("#34C759"));
+                inAppBannerProgressBar.setVisibility(View.GONE);
+
+                if (hideBannerRunnable != null) bannerHandler.removeCallbacks(hideBannerRunnable);
+                hideBannerRunnable = () -> {
+                    iosInAppBanner.animate()
+                            .alpha(0f)
+                            .translationY(-60f)
+                            .setDuration(350)
+                            .withEndAction(() -> iosInAppBanner.setVisibility(View.GONE))
+                            .start();
+                };
+                bannerHandler.postDelayed(hideBannerRunnable, 4500);
+            } else if (isFailed) {
+                inAppBannerIcon.setImageResource(R.drawable.ic_trash);
+                inAppBannerTitle.setText("Yuklash to'xtatildi");
+                inAppBannerSubtitle.setText(subtitle);
+                inAppBannerBadge.setText("Xatolik");
+                inAppBannerBadge.setTextColor(Color.parseColor("#FF3B30"));
+                inAppBannerProgressBar.setVisibility(View.GONE);
+
+                if (hideBannerRunnable != null) bannerHandler.removeCallbacks(hideBannerRunnable);
+                hideBannerRunnable = () -> {
+                    iosInAppBanner.animate()
+                            .alpha(0f)
+                            .translationY(-60f)
+                            .setDuration(350)
+                            .withEndAction(() -> iosInAppBanner.setVisibility(View.GONE))
+                            .start();
+                };
+                bannerHandler.postDelayed(hideBannerRunnable, 4000);
+            } else {
+                inAppBannerIcon.setImageResource(R.drawable.ic_download);
+                inAppBannerTitle.setText(title);
+                inAppBannerSubtitle.setText(subtitle);
+                inAppBannerBadge.setText(progress + "%");
+                inAppBannerBadge.setTextColor(Color.parseColor("#0A84FF"));
+                inAppBannerProgressBar.setVisibility(View.VISIBLE);
+                inAppBannerProgressBar.setProgress(progress);
+                if (hideBannerRunnable != null) bannerHandler.removeCallbacks(hideBannerRunnable);
+            }
+
+            if (iosInAppBanner.getVisibility() != View.VISIBLE) {
+                iosInAppBanner.setVisibility(View.VISIBLE);
+                iosInAppBanner.setAlpha(0f);
+                iosInAppBanner.setTranslationY(-60f);
+                iosInAppBanner.animate().alpha(1f).translationY(0f).setDuration(300).start();
+            }
+        });
+    }
+
+    // Real-Time iOS Style Download Progress Notification & Percentage
     private void trackDownloadProgress(long downloadId, String fileName) {
         new Thread(() -> {
             DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
@@ -606,11 +717,18 @@ public class MainActivity extends AppCompatActivity {
                     PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
             );
 
+            RemoteViews initialViews = createIosNotificationView("Yuklanmoqda...", fileName, "0%", 0, false, false);
+
             NotificationCompat.Builder builder = new NotificationCompat.Builder(MainActivity.this, NOTIFICATION_CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_download)
+                    .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                    .setCustomContentView(initialViews)
+                    .setCustomBigContentView(initialViews)
                     .setContentTitle("Yuklanmoqda...")
                     .setContentText(fileName)
                     .setContentIntent(pIntent)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setDefaults(NotificationCompat.DEFAULT_ALL)
                     .setOngoing(true)
                     .setOnlyAlertOnce(true);
 
@@ -631,32 +749,46 @@ public class MainActivity extends AppCompatActivity {
 
                         if (status == DownloadManager.STATUS_SUCCESSFUL) {
                             downloading = false;
-                            builder.setContentTitle("Yuklab olindi! ✅")
+                            RemoteViews doneViews = createIosNotificationView("Yuklab olindi! ✨", fileName + " — ko'rish uchun bosing", "Tayyor", 100, true, false);
+                            builder.setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                                    .setCustomContentView(doneViews)
+                                    .setCustomBigContentView(doneViews)
+                                    .setContentTitle("Yuklab olindi! ✨")
                                     .setContentText(fileName + " — ko'rish uchun bosing")
                                     .setProgress(0, 0, false)
                                     .setOngoing(false)
                                     .setAutoCancel(true);
                             nm.notify(notificationId, builder.build());
+                            updateInAppNotification("AniRate • Yuklab olindi! ✨", fileName, 100, true, false);
                             runOnUiThread(this::loadDownloadedAnimeFiles);
                             break;
                         } else if (status == DownloadManager.STATUS_FAILED) {
                             downloading = false;
-                            builder.setContentTitle("Yuklab olish to'xtatildi")
+                            RemoteViews failViews = createIosNotificationView("Yuklab olish to'xtatildi", fileName, "Xato", 0, false, true);
+                            builder.setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                                    .setCustomContentView(failViews)
+                                    .setCustomBigContentView(failViews)
+                                    .setContentTitle("Yuklab olish to'xtatildi")
                                     .setContentText(fileName)
                                     .setProgress(0, 0, false)
                                     .setOngoing(false)
                                     .setAutoCancel(true);
                             nm.notify(notificationId, builder.build());
+                            updateInAppNotification("Yuklab olish to'xtatildi", fileName, 0, false, true);
                             break;
                         } else if (status == DownloadManager.STATUS_RUNNING || status == DownloadManager.STATUS_PENDING) {
+                            int progress = 0;
                             if (bytesTotal > 0) {
-                                int progress = (int) ((bytesDownloaded * 100) / bytesTotal);
-                                builder.setContentTitle("Yuklanmoqda (" + progress + "%)...")
-                                        .setProgress(100, progress, false);
-                            } else {
-                                builder.setProgress(100, 0, true);
+                                progress = (int) ((bytesDownloaded * 100) / bytesTotal);
                             }
+                            RemoteViews progressViews = createIosNotificationView("Yuklanmoqda (" + progress + "%)...", fileName, progress + "%", progress, false, false);
+                            builder.setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                                    .setCustomContentView(progressViews)
+                                    .setCustomBigContentView(progressViews)
+                                    .setContentTitle("Yuklanmoqda (" + progress + "%)...")
+                                    .setProgress(100, progress, false);
                             nm.notify(notificationId, builder.build());
+                            updateInAppNotification("AniRate • Yuklanmoqda...", fileName, progress, false, false);
                         }
                     }
                 } catch (Exception ignored) {
