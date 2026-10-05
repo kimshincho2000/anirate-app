@@ -1,11 +1,20 @@
 package uz.anirate.app;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.media.MediaPlayer;
 import android.media.PlaybackParams;
@@ -20,6 +29,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputType;
 import android.view.GestureDetector;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -36,9 +46,9 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.BaseAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -46,13 +56,13 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
-import android.content.SharedPreferences;
-import android.content.res.ColorStateList;
-import android.text.InputType;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import java.io.File;
@@ -64,43 +74,48 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
 
     private static final String SITE_URL = "https://anirate.wwwz.uz";
+    private static final String NOTIFICATION_CHANNEL_ID = "anirate_downloads_channel";
 
     private WebView webView;
     private SwipeRefreshLayout swipeRefresh;
     private ProgressBar progressBar;
     private LinearLayout layoutError;
-    private Button btnRetry;
-    private Button btnOpenDownloads;
-    private LinearLayout btnQuickDownloadsFab;
+    private View btnRetry;
+    private View btnOpenDownloads;
+    private View btnQuickDownloadsFab;
     private FrameLayout fullscreenContainer;
 
     // In-App Downloads Management
     private LinearLayout layoutDownloads;
     private ListView listDownloads;
     private TextView tvEmptyDownloads;
-    private Button btnCloseDownloads;
+    private View btnCloseDownloads;
+    private View btnAdminToggle;
+    private TextView tvAdminLabel;
     private DownloadAdapter downloadAdapter;
     private final List<File> downloadedFiles = new ArrayList<>();
 
-    // 1:1 In-App Video Player (AniRate / GoldAnime Glassmorphism Engine)
+    // 1:1 In-App Video Player (AniRate / GoldAnime iOS Glass Engine)
     private FrameLayout layoutInternalPlayer;
     private VideoView internalVideoView;
     private View playerTouchSurface;
     private FrameLayout playerCenterPlayBtn;
-    private TextView tvCenterPlayIcon;
+    private ImageView ivCenterPlayIcon;
     private LinearLayout rippleLeft;
     private LinearLayout rippleRight;
     private FrameLayout playerControlsOverlay;
-    private TextView btnExitPlayer;
+    private View btnExitPlayer;
     private TextView tvPlayerTitle;
-    private TextView btnPlayerSpeed;
-    private TextView btnPlayerPlay;
-    private TextView btnPlayerRewind;
-    private TextView btnPlayerForward;
+    private View btnPlayerSpeed;
+    private TextView tvPlayerSpeedLabel;
+    private FrameLayout btnPlayerPlay;
+    private ImageView ivBottomPlayIcon;
+    private FrameLayout btnPlayerRewind;
+    private FrameLayout btnPlayerForward;
     private TextView tvPlayerCurrentTime;
     private SeekBar playerSeekBar;
     private TextView tvPlayerDuration;
-    private TextView btnPlayerFullscreen;
+    private FrameLayout btnPlayerFullscreen;
 
     private MediaPlayer mediaPlayer;
     private boolean isUserSeeking = false;
@@ -129,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
     private ConnectivityManager.NetworkCallback networkCallback;
 
     private boolean isAdminUser = false;
-    private Button btnAdminToggle;
+    private BroadcastReceiver downloadCompleteReceiver;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -143,6 +158,9 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
+        createNotificationChannel();
+        requestNotificationPermission();
+
         initViews();
         setupWebView();
         setupSwipeRefresh();
@@ -150,6 +168,9 @@ public class MainActivity extends AppCompatActivity {
         setupInternalPlayer();
         setupBackHandler();
         registerNetworkAutoReconnect();
+        registerDownloadReceiver();
+
+        handleIncomingIntent(getIntent());
 
         if (savedInstanceState == null) {
             if (isNetworkAvailable()) {
@@ -162,6 +183,44 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIncomingIntent(intent);
+    }
+
+    private void handleIncomingIntent(Intent intent) {
+        if (intent != null && intent.getBooleanExtra("open_downloads", false)) {
+            showDownloadsList();
+        }
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID,
+                    "AniRate Yuklab Olishlar",
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            channel.setDescription("Anime qismlarini yuklab olish holati va foizi");
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            if (nm != null) {
+                nm.createNotificationChannel(channel);
+            }
+        }
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS}, 101);
+            }
+        }
+    }
+
     private void applyContentProtection(boolean enable) {
         if (enable) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
@@ -171,13 +230,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateAdminButtonState() {
-        if (btnAdminToggle != null) {
+        if (tvAdminLabel != null && btnAdminToggle != null) {
             if (isAdminUser) {
-                btnAdminToggle.setText("👑 Admin");
-                btnAdminToggle.setBackgroundTintList(ColorStateList.valueOf(0xFFE50914));
+                tvAdminLabel.setText("Admin (Faol)");
+                btnAdminToggle.setBackgroundResource(R.drawable.bg_ios_primary_btn);
             } else {
-                btnAdminToggle.setText("🔑 Admin");
-                btnAdminToggle.setBackgroundTintList(ColorStateList.valueOf(0x33FFFFFF));
+                tvAdminLabel.setText("Admin");
+                btnAdminToggle.setBackgroundResource(R.drawable.bg_ios_glass_pill);
             }
         }
     }
@@ -253,6 +312,7 @@ public class MainActivity extends AppCompatActivity {
         tvEmptyDownloads = findViewById(R.id.tv_empty_downloads);
         btnCloseDownloads = findViewById(R.id.btn_close_downloads);
         btnAdminToggle = findViewById(R.id.btn_admin_toggle);
+        tvAdminLabel = findViewById(R.id.tv_admin_label);
         updateAdminButtonState();
 
         if (btnAdminToggle != null) {
@@ -264,14 +324,16 @@ public class MainActivity extends AppCompatActivity {
         internalVideoView = findViewById(R.id.internal_video_view);
         playerTouchSurface = findViewById(R.id.player_touch_surface);
         playerCenterPlayBtn = findViewById(R.id.player_center_play_btn);
-        tvCenterPlayIcon = findViewById(R.id.tv_center_play_icon);
+        ivCenterPlayIcon = findViewById(R.id.iv_center_play_icon);
         rippleLeft = findViewById(R.id.ripple_left);
         rippleRight = findViewById(R.id.ripple_right);
         playerControlsOverlay = findViewById(R.id.player_controls_overlay);
         btnExitPlayer = findViewById(R.id.btn_exit_player);
         tvPlayerTitle = findViewById(R.id.tv_player_title);
         btnPlayerSpeed = findViewById(R.id.btn_player_speed);
+        tvPlayerSpeedLabel = findViewById(R.id.tv_player_speed_label);
         btnPlayerPlay = findViewById(R.id.btn_player_play);
+        ivBottomPlayIcon = findViewById(R.id.iv_bottom_play_icon);
         btnPlayerRewind = findViewById(R.id.btn_player_rewind);
         btnPlayerForward = findViewById(R.id.btn_player_forward);
         tvPlayerCurrentTime = findViewById(R.id.tv_player_current_time);
@@ -458,7 +520,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Direct Video Download to Movies/AniRate
+    // Direct Video Download to App Storage & Notification Progress Tracking
     private void startDirectDownload(String url, String fileName) {
         try {
             if (url == null || url.trim().isEmpty()) {
@@ -488,22 +550,122 @@ public class MainActivity extends AppCompatActivity {
             request.addRequestHeader("User-Agent", webView.getSettings().getUserAgentString());
             request.setDescription("AniRate orqali oflayn ko'rish uchun yuklanmoqda...");
             request.setTitle(fileName);
-            request.allowScanningByMediaScanner();
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE);
 
-            // Ensure directory exists
-            File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "AniRate");
-            if (!dir.exists()) dir.mkdirs();
-
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_MOVIES, "AniRate/" + fileName);
+            // Save to app external storage (guaranteed 100% write & read permission on all Android versions)
+            request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_MOVIES, fileName);
 
             DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
             if (dm != null) {
-                dm.enqueue(request);
-                Toast.makeText(MainActivity.this, "📥 Anime yuklab olish boshlandi: " + fileName, Toast.LENGTH_LONG).show();
+                long downloadId = dm.enqueue(request);
+                Toast.makeText(MainActivity.this, "Yuklab olish boshlandi: " + fileName, Toast.LENGTH_SHORT).show();
+                trackDownloadProgress(downloadId, fileName);
             }
         } catch (Exception e) {
             Toast.makeText(MainActivity.this, "Yuklab olishda xatolik: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // Real-Time Download Progress Notification & Percentage
+    private void trackDownloadProgress(long downloadId, String fileName) {
+        new Thread(() -> {
+            DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (dm == null || nm == null) return;
+
+            int notificationId = (int) (downloadId % Integer.MAX_VALUE);
+            boolean downloading = true;
+
+            // Intent to open app directly into "Saqlanganlar"
+            Intent openIntent = new Intent(MainActivity.this, MainActivity.class);
+            openIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            openIntent.putExtra("open_downloads", true);
+            PendingIntent pIntent = PendingIntent.getActivity(
+                    MainActivity.this,
+                    notificationId,
+                    openIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
+            );
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(MainActivity.this, NOTIFICATION_CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_download)
+                    .setContentTitle("Yuklanmoqda...")
+                    .setContentText(fileName)
+                    .setContentIntent(pIntent)
+                    .setOngoing(true)
+                    .setOnlyAlertOnce(true);
+
+            while (downloading) {
+                DownloadManager.Query q = new DownloadManager.Query();
+                q.setFilterById(downloadId);
+                Cursor cursor = null;
+                try {
+                    cursor = dm.query(q);
+                    if (cursor != null && cursor.moveToFirst()) {
+                        int statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+                        int bytesIdx = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR);
+                        int totalIdx = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES);
+
+                        int status = statusIdx != -1 ? cursor.getInt(statusIdx) : -1;
+                        long bytesDownloaded = bytesIdx != -1 ? cursor.getLong(bytesIdx) : 0;
+                        long bytesTotal = totalIdx != -1 ? cursor.getLong(totalIdx) : 0;
+
+                        if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                            downloading = false;
+                            builder.setContentTitle("Yuklab olindi! ✅")
+                                    .setContentText(fileName + " — ko'rish uchun bosing")
+                                    .setProgress(0, 0, false)
+                                    .setOngoing(false)
+                                    .setAutoCancel(true);
+                            nm.notify(notificationId, builder.build());
+                            runOnUiThread(this::loadDownloadedAnimeFiles);
+                            break;
+                        } else if (status == DownloadManager.STATUS_FAILED) {
+                            downloading = false;
+                            builder.setContentTitle("Yuklab olish to'xtatildi")
+                                    .setContentText(fileName)
+                                    .setProgress(0, 0, false)
+                                    .setOngoing(false)
+                                    .setAutoCancel(true);
+                            nm.notify(notificationId, builder.build());
+                            break;
+                        } else if (status == DownloadManager.STATUS_RUNNING || status == DownloadManager.STATUS_PENDING) {
+                            if (bytesTotal > 0) {
+                                int progress = (int) ((bytesDownloaded * 100) / bytesTotal);
+                                builder.setContentTitle("Yuklanmoqda (" + progress + "%)...")
+                                        .setProgress(100, progress, false);
+                            } else {
+                                builder.setProgress(100, 0, true);
+                            }
+                            nm.notify(notificationId, builder.build());
+                        }
+                    }
+                } catch (Exception ignored) {
+                } finally {
+                    if (cursor != null) cursor.close();
+                }
+
+                try {
+                    Thread.sleep(800);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }).start();
+    }
+
+    private void registerDownloadReceiver() {
+        downloadCompleteReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                runOnUiThread(() -> loadDownloadedAnimeFiles());
+            }
+        };
+        IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(downloadCompleteReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(downloadCompleteReceiver, filter);
         }
     }
 
@@ -576,21 +738,21 @@ public class MainActivity extends AppCompatActivity {
     private void loadDownloadedAnimeFiles() {
         downloadedFiles.clear();
 
-        // 1. Check public Movies/AniRate
-        File publicDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "AniRate");
-        if (publicDir.exists() && publicDir.isDirectory()) {
-            File[] files = publicDir.listFiles();
+        // 1. Check app private external files (Movies)
+        File appDir = getExternalFilesDir(Environment.DIRECTORY_MOVIES);
+        if (appDir != null && appDir.exists()) {
+            File[] files = appDir.listFiles();
             if (files != null) {
                 for (File f : files) {
-                    if (isVideoFile(f)) downloadedFiles.add(f);
+                    if (isVideoFile(f) && !downloadedFiles.contains(f)) downloadedFiles.add(f);
                 }
             }
         }
 
-        // 2. Check app external files
-        File appDir = getExternalFilesDir(Environment.DIRECTORY_MOVIES);
-        if (appDir != null && appDir.exists()) {
-            File[] files = appDir.listFiles();
+        // 2. Check public Movies/AniRate
+        File publicDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "AniRate");
+        if (publicDir.exists() && publicDir.isDirectory()) {
+            File[] files = publicDir.listFiles();
             if (files != null) {
                 for (File f : files) {
                     if (isVideoFile(f) && !downloadedFiles.contains(f)) downloadedFiles.add(f);
@@ -616,11 +778,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // =========================================================================
-    // 1:1 NATIVE VIDEO PLAYER ENGINE (AniRate / GoldAnime Glassmorphism Engine)
+    // 1:1 NATIVE VIDEO PLAYER ENGINE (AniRate / GoldAnime iOS Glassmorphism Engine)
     // =========================================================================
     @SuppressLint("ClickableViewAccessibility")
     private void setupInternalPlayer() {
-        // Gesture Detector for Single Tap (toggle controls) and Double Tap (+/- 10s seek)
         GestureDetector gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onSingleTapConfirmed(MotionEvent e) {
@@ -660,7 +821,7 @@ public class MainActivity extends AppCompatActivity {
         btnPlayerRewind.setOnClickListener(v -> seekRelative(-10));
         btnPlayerForward.setOnClickListener(v -> seekRelative(10));
 
-        // Speed Selector Button (0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 2.0x)
+        // Speed Selector Button
         btnPlayerSpeed.setOnClickListener(v -> showSpeedDialog());
 
         // Fullscreen toggle
@@ -710,16 +871,16 @@ public class MainActivity extends AppCompatActivity {
             updateTimeline(0, duration);
 
             internalVideoView.start();
-            tvCenterPlayIcon.setText("⏸");
-            btnPlayerPlay.setText("⏸");
+            ivCenterPlayIcon.setImageResource(R.drawable.ic_pause);
+            ivBottomPlayIcon.setImageResource(R.drawable.ic_pause);
 
             progressHandler.post(progressRunnable);
             resetAutoHideTimer();
         });
 
         internalVideoView.setOnCompletionListener(mp -> {
-            tvCenterPlayIcon.setText("▶");
-            btnPlayerPlay.setText("▶");
+            ivCenterPlayIcon.setImageResource(R.drawable.ic_play);
+            ivBottomPlayIcon.setImageResource(R.drawable.ic_play);
             showControlsPermanently();
             Toast.makeText(this, "Anime qismi yakunlandi", Toast.LENGTH_SHORT).show();
         });
@@ -756,7 +917,7 @@ public class MainActivity extends AppCompatActivity {
         }
         mediaPlayer = null;
         currentSpeed = 1.0f;
-        btnPlayerSpeed.setText("1.0x");
+        if (tvPlayerSpeedLabel != null) tvPlayerSpeedLabel.setText("1.0x");
 
         layoutInternalPlayer.setVisibility(View.GONE);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
@@ -768,13 +929,13 @@ public class MainActivity extends AppCompatActivity {
     private void togglePlayPause() {
         if (internalVideoView.isPlaying()) {
             internalVideoView.pause();
-            tvCenterPlayIcon.setText("▶");
-            btnPlayerPlay.setText("▶");
+            ivCenterPlayIcon.setImageResource(R.drawable.ic_play);
+            ivBottomPlayIcon.setImageResource(R.drawable.ic_play);
             showControlsPermanently();
         } else {
             internalVideoView.start();
-            tvCenterPlayIcon.setText("⏸");
-            btnPlayerPlay.setText("⏸");
+            ivCenterPlayIcon.setImageResource(R.drawable.ic_pause);
+            ivBottomPlayIcon.setImageResource(R.drawable.ic_pause);
             resetAutoHideTimer();
         }
     }
@@ -822,7 +983,9 @@ public class MainActivity extends AppCompatActivity {
                 .setTitle("Ijro tezligi")
                 .setItems(speeds, (dialog, which) -> {
                     currentSpeed = speedValues[which];
-                    btnPlayerSpeed.setText(speeds[which].replace(" (Normal)", ""));
+                    if (tvPlayerSpeedLabel != null) {
+                        tvPlayerSpeedLabel.setText(speeds[which].replace(" (Normal)", ""));
+                    }
                     applyPlaybackSpeed();
                     resetAutoHideTimer();
                 })
@@ -924,8 +1087,8 @@ public class MainActivity extends AppCompatActivity {
             File file = getItem(position);
             TextView title = convertView.findViewById(R.id.item_title);
             TextView size = convertView.findViewById(R.id.item_size);
-            Button btnPlay = convertView.findViewById(R.id.btn_play);
-            Button btnDelete = convertView.findViewById(R.id.btn_delete);
+            View btnPlay = convertView.findViewById(R.id.btn_play);
+            View btnDelete = convertView.findViewById(R.id.btn_delete);
 
             title.setText(file.getName());
             long mb = file.length() / (1024 * 1024);
@@ -1062,6 +1225,11 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         progressHandler.removeCallbacks(progressRunnable);
         hideControlsHandler.removeCallbacks(hideControlsRunnable);
+        if (downloadCompleteReceiver != null) {
+            try {
+                unregisterReceiver(downloadCompleteReceiver);
+            } catch (Exception ignored) {}
+        }
         if (networkCallback != null) {
             ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
             if (cm != null) {
