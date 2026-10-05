@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">AniRate</string>
+    <string name="no_internet">Internet aloqasi mavjud emas</string>
+    <string name="retry">Qayta urinish</string>
+</resources>
