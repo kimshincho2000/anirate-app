@@ -67,7 +67,12 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -568,7 +573,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Direct Video Download to App Storage & Notification Progress Tracking
+    // Direct Video Download to App Storage via Reliable Native Background Stream
     private void startDirectDownload(String url, String fileName) {
         try {
             if (url == null || url.trim().isEmpty()) {
@@ -591,25 +596,17 @@ public class MainActivity extends AppCompatActivity {
                 fileName += ".mp4";
             }
 
-            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-            request.setMimeType("video/mp4");
-            String cookies = CookieManager.getInstance().getCookie(url);
-            if (cookies != null) request.addRequestHeader("cookie", cookies);
-            request.addRequestHeader("User-Agent", webView.getSettings().getUserAgentString());
-            request.setDescription("AniRate orqali oflayn ko'rish uchun yuklanmoqda...");
-            request.setTitle(fileName);
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE);
-
-            // Save to app external storage (guaranteed 100% write & read permission on all Android versions)
-            request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_MOVIES, fileName);
-
-            DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-            if (dm != null) {
-                long downloadId = dm.enqueue(request);
-                Toast.makeText(MainActivity.this, "Yuklab olish boshlandi: " + fileName, Toast.LENGTH_SHORT).show();
-                updateInAppNotification("AniRate • Yuklanmoqda...", fileName, 0, false, false);
-                trackDownloadProgress(downloadId, fileName);
+            if (url.contains("episode-proxy.php")) {
+                if (!url.contains("download=")) {
+                    url += (url.contains("?") ? "&" : "?") + "download=1";
+                }
+                if (!url.contains("name=")) {
+                    url += "&name=" + Uri.encode(fileName);
+                }
             }
+
+            Toast.makeText(MainActivity.this, "Yuklab olish boshlandi: " + fileName, Toast.LENGTH_SHORT).show();
+            startNativeDownload(url, fileName);
         } catch (Exception e) {
             Toast.makeText(MainActivity.this, "Yuklab olishda xatolik: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
@@ -696,17 +693,17 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Real-Time iOS Style Download Progress Notification & Percentage
-    private void trackDownloadProgress(long downloadId, String fileName) {
+    private void startNativeDownload(String downloadUrl, String fileName) {
         new Thread(() -> {
-            DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            if (dm == null || nm == null) return;
+            int notificationId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
 
-            int notificationId = (int) (downloadId % Integer.MAX_VALUE);
-            boolean downloading = true;
+            File dir = getExternalFilesDir(Environment.DIRECTORY_MOVIES);
+            if (dir == null) dir = getFilesDir();
+            if (!dir.exists()) dir.mkdirs();
+            File targetFile = new File(dir, fileName);
+            File tempFile = new File(dir, fileName + ".part");
 
-            // Intent to open app directly into "Saqlanganlar"
             Intent openIntent = new Intent(MainActivity.this, MainActivity.class);
             openIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             openIntent.putExtra("open_downloads", true);
@@ -717,14 +714,13 @@ public class MainActivity extends AppCompatActivity {
                     PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0)
             );
 
-            RemoteViews initialViews = createIosNotificationView("Yuklanmoqda...", fileName, "0%", 0, false, false);
-
+            RemoteViews initialViews = createIosNotificationView("Yuklanmoqda (0%)...", fileName, "0%", 0, false, false);
             NotificationCompat.Builder builder = new NotificationCompat.Builder(MainActivity.this, NOTIFICATION_CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_download)
                     .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
                     .setCustomContentView(initialViews)
                     .setCustomBigContentView(initialViews)
-                    .setContentTitle("Yuklanmoqda...")
+                    .setContentTitle("Yuklanmoqda (0%)...")
                     .setContentText(fileName)
                     .setContentIntent(pIntent)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -732,75 +728,127 @@ public class MainActivity extends AppCompatActivity {
                     .setOngoing(true)
                     .setOnlyAlertOnce(true);
 
-            while (downloading) {
-                DownloadManager.Query q = new DownloadManager.Query();
-                q.setFilterById(downloadId);
-                Cursor cursor = null;
-                try {
-                    cursor = dm.query(q);
-                    if (cursor != null && cursor.moveToFirst()) {
-                        int statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
-                        int bytesIdx = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR);
-                        int totalIdx = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES);
+            if (nm != null) {
+                nm.notify(notificationId, builder.build());
+            }
+            updateInAppNotification("AniRate • Yuklanmoqda...", fileName, 0, false, false);
 
-                        int status = statusIdx != -1 ? cursor.getInt(statusIdx) : -1;
-                        long bytesDownloaded = bytesIdx != -1 ? cursor.getLong(bytesIdx) : 0;
-                        long bytesTotal = totalIdx != -1 ? cursor.getLong(totalIdx) : 0;
+            InputStream in = null;
+            FileOutputStream out = null;
+            HttpURLConnection conn = null;
 
-                        if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                            downloading = false;
-                            RemoteViews doneViews = createIosNotificationView("Yuklab olindi! ✨", fileName + " — ko'rish uchun bosing", "Tayyor", 100, true, false);
-                            builder.setStyle(new NotificationCompat.DecoratedCustomViewStyle())
-                                    .setCustomContentView(doneViews)
-                                    .setCustomBigContentView(doneViews)
-                                    .setContentTitle("Yuklab olindi! ✨")
-                                    .setContentText(fileName + " — ko'rish uchun bosing")
-                                    .setProgress(0, 0, false)
-                                    .setOngoing(false)
-                                    .setAutoCancel(true);
-                            nm.notify(notificationId, builder.build());
-                            updateInAppNotification("AniRate • Yuklab olindi! ✨", fileName, 100, true, false);
-                            runOnUiThread(this::loadDownloadedAnimeFiles);
-                            break;
-                        } else if (status == DownloadManager.STATUS_FAILED) {
-                            downloading = false;
-                            RemoteViews failViews = createIosNotificationView("Yuklab olish to'xtatildi", fileName, "Xato", 0, false, true);
-                            builder.setStyle(new NotificationCompat.DecoratedCustomViewStyle())
-                                    .setCustomContentView(failViews)
-                                    .setCustomBigContentView(failViews)
-                                    .setContentTitle("Yuklab olish to'xtatildi")
-                                    .setContentText(fileName)
-                                    .setProgress(0, 0, false)
-                                    .setOngoing(false)
-                                    .setAutoCancel(true);
-                            nm.notify(notificationId, builder.build());
-                            updateInAppNotification("Yuklab olish to'xtatildi", fileName, 0, false, true);
-                            break;
-                        } else if (status == DownloadManager.STATUS_RUNNING || status == DownloadManager.STATUS_PENDING) {
-                            int progress = 0;
-                            if (bytesTotal > 0) {
-                                progress = (int) ((bytesDownloaded * 100) / bytesTotal);
-                            }
-                            RemoteViews progressViews = createIosNotificationView("Yuklanmoqda (" + progress + "%)...", fileName, progress + "%", progress, false, false);
-                            builder.setStyle(new NotificationCompat.DecoratedCustomViewStyle())
-                                    .setCustomContentView(progressViews)
-                                    .setCustomBigContentView(progressViews)
-                                    .setContentTitle("Yuklanmoqda (" + progress + "%)...")
-                                    .setProgress(100, progress, false);
-                            nm.notify(notificationId, builder.build());
-                            updateInAppNotification("AniRate • Yuklanmoqda...", fileName, progress, false, false);
-                        }
+            try {
+                URL u = new URL(downloadUrl);
+                conn = (HttpURLConnection) u.openConnection();
+                conn.setInstanceFollowRedirects(true);
+                conn.setConnectTimeout(30000);
+                conn.setReadTimeout(60000);
+                String userAgent = webView != null ? webView.getSettings().getUserAgentString() : "Mozilla/5.0 AniRateApp";
+                conn.setRequestProperty("User-Agent", userAgent);
+
+                String cookies = CookieManager.getInstance().getCookie(downloadUrl);
+                if (cookies != null && !cookies.isEmpty()) {
+                    conn.setRequestProperty("Cookie", cookies);
+                }
+
+                int responseCode = conn.getResponseCode();
+                // Handle HTTP redirects (301, 302, 307, 308)
+                if (responseCode == HttpURLConnection.HTTP_MOVED_PERM || responseCode == HttpURLConnection.HTTP_MOVED_TEMP || responseCode == 307 || responseCode == 308) {
+                    String newUrl = conn.getHeaderField("Location");
+                    if (newUrl != null && !newUrl.isEmpty()) {
+                        conn.disconnect();
+                        u = new URL(newUrl);
+                        conn = (HttpURLConnection) u.openConnection();
+                        conn.setConnectTimeout(30000);
+                        conn.setReadTimeout(60000);
+                        conn.setRequestProperty("User-Agent", userAgent);
+                        if (cookies != null) conn.setRequestProperty("Cookie", cookies);
+                        responseCode = conn.getResponseCode();
                     }
-                } catch (Exception ignored) {
-                } finally {
-                    if (cursor != null) cursor.close();
                 }
 
-                try {
-                    Thread.sleep(800);
-                } catch (InterruptedException e) {
-                    break;
+                if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HttpURLConnection.HTTP_PARTIAL) {
+                    throw new Exception("Server HTTP xatoligi: " + responseCode);
                 }
+
+                long totalBytes = conn.getContentLengthLong();
+                in = new BufferedInputStream(conn.getInputStream(), 64 * 1024);
+                out = new FileOutputStream(tempFile);
+
+                byte[] buffer = new byte[64 * 1024];
+                long bytesDownloaded = 0;
+                int count;
+                long lastNotificationTime = 0;
+                int lastProgress = -1;
+
+                while ((count = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, count);
+                    bytesDownloaded += count;
+
+                    int progress = totalBytes > 0 ? (int) ((bytesDownloaded * 100) / totalBytes) : -1;
+                    long now = System.currentTimeMillis();
+                    if (progress != lastProgress && (now - lastNotificationTime >= 700 || progress == 100)) {
+                        lastProgress = progress;
+                        lastNotificationTime = now;
+                        String badge = progress >= 0 ? (progress + "%") : ((bytesDownloaded / (1024 * 1024)) + " MB");
+                        String title = "Yuklanmoqda (" + badge + ")...";
+
+                        RemoteViews progressViews = createIosNotificationView(title, fileName, badge, Math.max(0, progress), false, false);
+                        builder.setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                                .setCustomContentView(progressViews)
+                                .setCustomBigContentView(progressViews)
+                                .setContentTitle(title)
+                                .setProgress(100, Math.max(0, progress), progress < 0);
+
+                        if (nm != null) nm.notify(notificationId, builder.build());
+                        updateInAppNotification("AniRate • Yuklanmoqda...", fileName, Math.max(0, progress), false, false);
+                    }
+                }
+
+                out.flush();
+                out.close();
+                out = null;
+                in.close();
+                in = null;
+
+                if (tempFile.exists()) {
+                    if (targetFile.exists()) targetFile.delete();
+                    tempFile.renameTo(targetFile);
+                }
+
+                // Complete Notification (iOS Style)
+                RemoteViews doneViews = createIosNotificationView("Yuklab olindi! ✨", fileName + " — ko'rish uchun bosing", "Tayyor", 100, true, false);
+                builder.setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                        .setCustomContentView(doneViews)
+                        .setCustomBigContentView(doneViews)
+                        .setContentTitle("Yuklab olindi! ✨")
+                        .setContentText(fileName + " — ko'rish uchun bosing")
+                        .setProgress(0, 0, false)
+                        .setOngoing(false)
+                        .setAutoCancel(true);
+
+                if (nm != null) nm.notify(notificationId, builder.build());
+                updateInAppNotification("AniRate • Yuklab olindi! ✨", fileName, 100, true, false);
+                runOnUiThread(this::loadDownloadedAnimeFiles);
+
+            } catch (Exception e) {
+                if (tempFile.exists()) tempFile.delete();
+                RemoteViews failViews = createIosNotificationView("Yuklab olish to'xtatildi", fileName + ": " + e.getMessage(), "Xato", 0, false, true);
+                builder.setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                        .setCustomContentView(failViews)
+                        .setCustomBigContentView(failViews)
+                        .setContentTitle("Yuklab olish to'xtatildi")
+                        .setContentText(fileName + ": " + e.getMessage())
+                        .setProgress(0, 0, false)
+                        .setOngoing(false)
+                        .setAutoCancel(true);
+
+                if (nm != null) nm.notify(notificationId, builder.build());
+                updateInAppNotification("Yuklab olish to'xtatildi", fileName, 0, false, true);
+            } finally {
+                try { if (in != null) in.close(); } catch (Exception ignored) {}
+                try { if (out != null) out.close(); } catch (Exception ignored) {}
+                if (conn != null) conn.disconnect();
             }
         }).start();
     }
