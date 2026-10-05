@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@color/background">
 
-    <!-- Swipe Refresh Layout containing WebView -->
+    <!-- 1. Main Web View Container -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh"
         android:layout_width="match_parent"
@@ -23,12 +23,12 @@
         android:id="@+id/progress_bar"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="4dp"
+        android:layout_height="3dp"
         android:layout_gravity="top"
         android:progressDrawable="@drawable/progress_drawable"
         android:visibility="gone" />
 
-    <!-- Offline Mode Screen -->
+    <!-- 2. Offline Mode Screen (When no internet connection) -->
     <LinearLayout
         android:id="@+id/layout_error"
         android:layout_width="match_parent"
@@ -36,19 +36,20 @@
         android:gravity="center"
         android:orientation="vertical"
         android:padding="28dp"
+        android:background="@color/background"
         android:visibility="gone">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="🎬"
-            android:textSize="64sp" />
+            android:textSize="56sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="@string/no_internet"
+            android:text="Oflayn Rejim"
             android:textColor="@color/white"
             android:textSize="22sp"
             android:textStyle="bold" />
@@ -58,43 +59,143 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:gravity="center"
-            android:text="@string/no_internet_desc"
-            android:textColor="#A0A5B5"
+            android:text="Internet mavjud emas. APK ichida yuklab olingan animelaringizni internetsiz tomosha qilishingiz mumkin."
+            android:textColor="#9CA3AF"
             android:textSize="14sp" />
 
-        <!-- View Downloaded Offline Videos Button -->
+        <!-- Button: Open In-App Saved Animes -->
         <Button
-            android:id="@+id/btn_downloads"
+            android:id="@+id/btn_open_downloads"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_height="52dp"
+            android:layout_marginTop="28dp"
             android:backgroundTint="@color/primary"
-            android:text="@string/view_downloads"
+            android:text="📥 Saqlangan animelarni ko'rish"
             android:textColor="@color/white"
             android:textStyle="bold" />
 
-        <!-- View Cached Pages Button -->
-        <Button
-            android:id="@+id/btn_cached"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:backgroundTint="#202433"
-            android:text="@string/view_cached"
-            android:textColor="@color/white" />
-
-        <!-- Retry Online Connection Button -->
+        <!-- Button: Retry Connection -->
         <Button
             android:id="@+id/btn_retry"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:backgroundTint="#141721"
-            android:text="@string/retry"
-            android:textColor="#A0A5B5" />
+            android:layout_height="50dp"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="#1F2937"
+            android:text="🔄 Qayta ulanish"
+            android:textColor="@color/white" />
     </LinearLayout>
 
-    <!-- Fullscreen Video Container for HTML5 video player -->
+    <!-- 3. In-App Downloaded Anime List View -->
+    <LinearLayout
+        android:id="@+id/layout_downloads"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@color/background"
+        android:visibility="gone">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:background="#141721">
+
+            <Button
+                android:id="@+id/btn_close_downloads"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#2D3748"
+                android:text="◀️ Orqaga"
+                android:textSize="13sp"
+                android:textColor="@color/white" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="16dp"
+                android:text="📥 Saqlangan Animelar"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Empty state text if no downloads -->
+        <TextView
+            android:id="@+id/tv_empty_downloads"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="60dp"
+            android:gravity="center"
+            android:padding="20dp"
+            android:text="Hozircha yuklab olingan animelar yo'q.\nSaytdan animeni yuklab olsangiz, bu yerda saqlanadi."
+            android:textColor="#6B7280"
+            android:textSize="15sp"
+            android:visibility="gone" />
+
+        <!-- List of downloaded videos -->
+        <ListView
+            android:id="@+id/list_downloads"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:divider="#1F2430"
+            android:dividerHeight="1dp"
+            android:paddingHorizontal="12dp"
+            android:paddingTop="8dp" />
+    </LinearLayout>
+
+    <!-- 4. Built-in Native Offline Video Player -->
+    <FrameLayout
+        android:id="@+id/layout_internal_player"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:visibility="gone">
+
+        <VideoView
+            android:id="@+id/internal_video_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center" />
+
+        <!-- Player Top Bar (Back button and title) -->
+        <LinearLayout
+            android:id="@+id/player_top_bar"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_gravity="top"
+            android:background="#80000000"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <Button
+                android:id="@+id/btn_exit_player"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#FF2A55"
+                android:text="✕ Chiqish"
+                android:textColor="@color/white"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tv_player_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="12dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Anime Video"
+                android:textColor="@color/white"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- 5. Fullscreen container for Web HTML5 videos -->
     <FrameLayout
         android:id="@+id/fullscreen_container"
         android:layout_width="match_parent"
