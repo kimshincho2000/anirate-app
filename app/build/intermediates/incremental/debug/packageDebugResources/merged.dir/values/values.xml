@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#FF4A57</color>
+    <color name="background">#0b0d13</color>
+    <color name="primary">#FF2A55</color>
+    <color name="primary_dark">#0b0d13</color>
+    <color name="surface">#141721</color>
+    <color name="white">#FFFFFF</color>
+    <string name="app_name">AniRate</string>
+    <string name="download_started">Anime yuklab olinmoqda...</string>
+    <string name="no_internet">Oflayn Rejim</string>
+    <string name="no_internet_desc">Internet aloqasi mavjud emas. Avval ko\'rilgan animelarni keshdan yoki yuklab olingan videolarni oflayn tomosha qilishingiz mumkin.</string>
+    <string name="retry">🔄 Qayta ulanish</string>
+    <string name="view_cached">💾 Keshdagi sahifani ko\'rish</string>
+    <string name="view_downloads">📥 Yuklab olingan animelar</string>
+    <style name="Theme.Anirate" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:windowBackground">@color/background</item>
+    </style>
+</resources>

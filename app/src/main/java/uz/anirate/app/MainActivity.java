@@ -605,8 +605,21 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
+            // Must capture userAgent and cookies safely on UI thread
+            String userAgent = "Mozilla/5.0 (Linux; Android 10; Mobile) AniRateApp";
+            try {
+                if (webView != null && webView.getSettings() != null) {
+                    userAgent = webView.getSettings().getUserAgentString();
+                }
+            } catch (Exception ignored) {}
+
+            String cookies = "";
+            try {
+                cookies = CookieManager.getInstance().getCookie(url);
+            } catch (Exception ignored) {}
+
             Toast.makeText(MainActivity.this, "Yuklab olish boshlandi: " + fileName, Toast.LENGTH_SHORT).show();
-            startNativeDownload(url, fileName);
+            startNativeDownload(url, fileName, userAgent, cookies);
         } catch (Exception e) {
             Toast.makeText(MainActivity.this, "Yuklab olishda xatolik: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
@@ -693,7 +706,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void startNativeDownload(String downloadUrl, String fileName) {
+    private void startNativeDownload(String downloadUrl, String fileName, String finalUserAgent, String finalCookies) {
         new Thread(() -> {
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             int notificationId = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
@@ -739,36 +752,39 @@ public class MainActivity extends AppCompatActivity {
 
             try {
                 URL u = new URL(downloadUrl);
-                conn = (HttpURLConnection) u.openConnection();
-                conn.setInstanceFollowRedirects(true);
-                conn.setConnectTimeout(30000);
-                conn.setReadTimeout(60000);
-                String userAgent = webView != null ? webView.getSettings().getUserAgentString() : "Mozilla/5.0 AniRateApp";
-                conn.setRequestProperty("User-Agent", userAgent);
+                int redirectCount = 0;
+                int responseCode = -1;
 
-                String cookies = CookieManager.getInstance().getCookie(downloadUrl);
-                if (cookies != null && !cookies.isEmpty()) {
-                    conn.setRequestProperty("Cookie", cookies);
-                }
-
-                int responseCode = conn.getResponseCode();
-                // Handle HTTP redirects (301, 302, 307, 308)
-                if (responseCode == HttpURLConnection.HTTP_MOVED_PERM || responseCode == HttpURLConnection.HTTP_MOVED_TEMP || responseCode == 307 || responseCode == 308) {
-                    String newUrl = conn.getHeaderField("Location");
-                    if (newUrl != null && !newUrl.isEmpty()) {
-                        conn.disconnect();
-                        u = new URL(newUrl);
-                        conn = (HttpURLConnection) u.openConnection();
-                        conn.setConnectTimeout(30000);
-                        conn.setReadTimeout(60000);
-                        conn.setRequestProperty("User-Agent", userAgent);
-                        if (cookies != null) conn.setRequestProperty("Cookie", cookies);
-                        responseCode = conn.getResponseCode();
+                while (redirectCount < 5) {
+                    conn = (HttpURLConnection) u.openConnection();
+                    conn.setInstanceFollowRedirects(true);
+                    conn.setConnectTimeout(30000);
+                    conn.setReadTimeout(60000);
+                    if (finalUserAgent != null && !finalUserAgent.isEmpty()) {
+                        conn.setRequestProperty("User-Agent", finalUserAgent);
                     }
+                    if (finalCookies != null && !finalCookies.isEmpty()) {
+                        conn.setRequestProperty("Cookie", finalCookies);
+                    }
+
+                    responseCode = conn.getResponseCode();
+                    if (responseCode == HttpURLConnection.HTTP_MOVED_PERM || responseCode == HttpURLConnection.HTTP_MOVED_TEMP || responseCode == 307 || responseCode == 308) {
+                        String newUrl = conn.getHeaderField("Location");
+                        if (newUrl != null && !newUrl.isEmpty()) {
+                            if (!newUrl.startsWith("http://") && !newUrl.startsWith("https://")) {
+                                newUrl = new URL(u, newUrl).toString();
+                            }
+                            conn.disconnect();
+                            u = new URL(newUrl);
+                            redirectCount++;
+                            continue;
+                        }
+                    }
+                    break;
                 }
 
                 if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HttpURLConnection.HTTP_PARTIAL) {
-                    throw new Exception("Server HTTP xatoligi: " + responseCode);
+                    throw new Exception("Server HTTP " + responseCode);
                 }
 
                 long totalBytes = conn.getContentLengthLong();
@@ -832,19 +848,21 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(this::loadDownloadedAnimeFiles);
 
             } catch (Exception e) {
+                e.printStackTrace();
                 if (tempFile.exists()) tempFile.delete();
-                RemoteViews failViews = createIosNotificationView("Yuklab olish to'xtatildi", fileName + ": " + e.getMessage(), "Xato", 0, false, true);
+                String errDetail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                RemoteViews failViews = createIosNotificationView("Yuklab olish to'xtatildi", fileName + " (" + errDetail + ")", "Xato", 0, false, true);
                 builder.setStyle(new NotificationCompat.DecoratedCustomViewStyle())
                         .setCustomContentView(failViews)
                         .setCustomBigContentView(failViews)
                         .setContentTitle("Yuklab olish to'xtatildi")
-                        .setContentText(fileName + ": " + e.getMessage())
+                        .setContentText(fileName + " (" + errDetail + ")")
                         .setProgress(0, 0, false)
                         .setOngoing(false)
                         .setAutoCancel(true);
 
                 if (nm != null) nm.notify(notificationId, builder.build());
-                updateInAppNotification("Yuklab olish to'xtatildi", fileName, 0, false, true);
+                updateInAppNotification("Yuklab olish to'xtatildi", fileName + " (" + errDetail + ")", 0, false, true);
             } finally {
                 try { if (in != null) in.close(); } catch (Exception ignored) {}
                 try { if (out != null) out.close(); } catch (Exception ignored) {}

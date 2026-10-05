@@ -1,0 +1,142 @@
+[
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_quick_downloads_fab.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/bg_quick_downloads_fab.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ic_pause.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ic_pause.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "uz.anirate.app-main-35:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ic_play.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ic_play.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "uz.anirate.app-main-35:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_ios_glass_pill.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/bg_ios_glass_pill.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_ios_dynamic_island.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/bg_ios_dynamic_island.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_player_glass.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/bg_player_glass.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_player_center_play.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/bg_player_center_play.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "uz.anirate.app-main-35:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_progress_drawable.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/progress_drawable.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ic_speed.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ic_speed.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_player_pill.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/bg_player_pill.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/layout_item_download.xml.flat",
+        "source": "uz.anirate.app-main-35:/layout/item_download.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_ios_notification_card.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/bg_ios_notification_card.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ic_check.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ic_check.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ios_notification_progress.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ios_notification_progress.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ic_video_clip.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ic_video_clip.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_player_seekbar_thumb.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/player_seekbar_thumb.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "uz.anirate.app-main-35:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ic_trash.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ic_trash.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/layout_notification_ios_banner.xml.flat",
+        "source": "uz.anirate.app-main-35:/layout/notification_ios_banner.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_player_seekbar_progress.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/player_seekbar_progress.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_ios_glass_card.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/bg_ios_glass_card.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "uz.anirate.app-main-35:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ic_rewind_10.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ic_rewind_10.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ic_chevron_left.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ic_chevron_left.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ic_refresh.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ic_refresh.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_ios_primary_btn.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/bg_ios_primary_btn.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ic_download.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ic_download.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ic_lock.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ic_lock.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ic_fullscreen.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ic_fullscreen.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_ic_forward_10.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/ic_forward_10.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/layout_activity_main.xml.flat",
+        "source": "uz.anirate.app-main-35:/layout/activity_main.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_player_ripple_badge.xml.flat",
+        "source": "uz.anirate.app-main-35:/drawable/bg_player_ripple_badge.xml"
+    }
+]
