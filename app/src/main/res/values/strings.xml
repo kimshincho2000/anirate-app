@@ -1,5 +1,9 @@
 <resources>
     <string name="app_name">AniRate</string>
-    <string name="no_internet">Internet aloqasi mavjud emas</string>
-    <string name="retry">Qayta urinish</string>
+    <string name="no_internet">Oflayn Rejim</string>
+    <string name="no_internet_desc">Internet aloqasi mavjud emas. Avval ko\'rilgan animelarni keshdan yoki yuklab olingan videolarni oflayn tomosha qilishingiz mumkin.</string>
+    <string name="retry">🔄 Qayta ulanish</string>
+    <string name="view_cached">💾 Keshdagi sahifani ko\'rish</string>
+    <string name="view_downloads">📥 Yuklab olingan animelar</string>
+    <string name="download_started">Anime yuklab olinmoqda...</string>
 </resources>

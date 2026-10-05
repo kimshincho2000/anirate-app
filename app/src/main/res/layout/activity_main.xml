@@ -28,21 +28,21 @@
         android:progressDrawable="@drawable/progress_drawable"
         android:visibility="gone" />
 
-    <!-- No Internet / Error Screen -->
+    <!-- Offline Mode Screen -->
     <LinearLayout
         android:id="@+id/layout_error"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:gravity="center"
         android:orientation="vertical"
-        android:padding="24dp"
+        android:padding="28dp"
         android:visibility="gone">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🌐"
-            android:textSize="56sp" />
+            android:text="🎬"
+            android:textSize="64sp" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -50,17 +50,48 @@
             android:layout_marginTop="16dp"
             android:text="@string/no_internet"
             android:textColor="@color/white"
-            android:textSize="18sp"
+            android:textSize="22sp"
             android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/btn_retry"
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/no_internet_desc"
+            android:textColor="#A0A5B5"
+            android:textSize="14sp" />
+
+        <!-- View Downloaded Offline Videos Button -->
+        <Button
+            android:id="@+id/btn_downloads"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
             android:backgroundTint="@color/primary"
-            android:text="@string/retry"
+            android:text="@string/view_downloads"
+            android:textColor="@color/white"
+            android:textStyle="bold" />
+
+        <!-- View Cached Pages Button -->
+        <Button
+            android:id="@+id/btn_cached"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:backgroundTint="#202433"
+            android:text="@string/view_cached"
             android:textColor="@color/white" />
+
+        <!-- Retry Online Connection Button -->
+        <Button
+            android:id="@+id/btn_retry"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:backgroundTint="#141721"
+            android:text="@string/retry"
+            android:textColor="#A0A5B5" />
     </LinearLayout>
 
     <!-- Fullscreen Video Container for HTML5 video player -->

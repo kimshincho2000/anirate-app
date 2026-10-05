@@ -1,18 +1,25 @@
 package uz.anirate.app;
 
 import android.annotation.SuppressLint;
+import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
+import android.net.NetworkRequest;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
+import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -23,8 +30,10 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
@@ -37,10 +46,13 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private LinearLayout layoutError;
     private Button btnRetry;
+    private Button btnDownloads;
+    private Button btnCached;
     private FrameLayout fullscreenContainer;
 
     private View customView;
     private WebChromeClient.CustomViewCallback customViewCallback;
+    private ConnectivityManager.NetworkCallback networkCallback;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -53,28 +65,31 @@ public class MainActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progress_bar);
         layoutError = findViewById(R.id.layout_error);
         btnRetry = findViewById(R.id.btn_retry);
+        btnDownloads = findViewById(R.id.btn_downloads);
+        btnCached = findViewById(R.id.btn_cached);
         fullscreenContainer = findViewById(R.id.fullscreen_container);
 
         setupWebView();
         setupSwipeRefresh();
         setupBackHandler();
-
-        btnRetry.setOnClickListener(v -> {
-            if (isNetworkAvailable()) {
-                layoutError.setVisibility(View.GONE);
-                webView.setVisibility(View.VISIBLE);
-                webView.reload();
-            }
-        });
+        setupButtons();
+        registerNetworkAutoReconnect();
 
         if (savedInstanceState == null) {
-            if (isNetworkAvailable()) {
-                webView.loadUrl(SITE_URL);
-            } else {
-                showErrorScreen();
-            }
+            loadAppropriateUrl();
         } else {
             webView.restoreState(savedInstanceState);
+        }
+    }
+
+    private void loadAppropriateUrl() {
+        if (isNetworkAvailable()) {
+            webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+            webView.loadUrl(SITE_URL);
+        } else {
+            // Try loading from offline cache first
+            webView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+            webView.loadUrl(SITE_URL);
         }
     }
 
@@ -85,28 +100,67 @@ public class MainActivity extends AppCompatActivity {
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
         settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
         settings.setSupportZoom(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
 
-        // Customize user-agent so site knows it's the official app
+        // Cache setup for offline capabilities
+        if (isNetworkAvailable()) {
+            settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        } else {
+            settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+        }
+
+        // Custom User Agent
         String defaultUA = settings.getUserAgentString();
-        settings.setUserAgentString(defaultUA + " AniRateApp/1.0");
+        settings.setUserAgentString(defaultUA + " AniRateApp/1.1");
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+
+        // Download Listener: Allows downloading anime episodes for offline viewing
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
+            try {
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
+                if (fileName == null || fileName.isEmpty()) {
+                    fileName = "AniRate_Anime_" + System.currentTimeMillis() + ".mp4";
+                }
+
+                request.setMimeType(mimeType);
+                String cookies = CookieManager.getInstance().getCookie(url);
+                request.addRequestHeader("cookie", cookies);
+                request.addRequestHeader("User-Agent", userAgent);
+                request.setDescription("AniRate orqali oflayn ko'rish uchun yuklanmoqda...");
+                request.setTitle(fileName);
+                request.allowScanningByMediaScanner();
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_MOVIES, "AniRate/" + fileName);
+
+                DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                if (dm != null) {
+                    dm.enqueue(request);
+                    Toast.makeText(MainActivity.this, "📥 Anime yuklab olish boshlandi: " + fileName, Toast.LENGTH_LONG).show();
+                }
+            } catch (Exception e) {
+                // If DownloadManager fails, open browser
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    startActivity(intent);
+                } catch (Exception ignored) {}
+            }
+        });
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
 
-                // Open Telegram, external apps or intent schemes
                 if (url.startsWith("tg:") || url.startsWith("https://t.me/") || url.startsWith("intent:")) {
                     try {
                         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
@@ -117,12 +171,10 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                // If link belongs to anirate.wwwz.uz, load inside webview
                 if (url.contains("anirate.wwwz.uz")) {
                     return false;
                 }
 
-                // External links open in browser
                 try {
                     Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                     startActivity(intent);
@@ -141,6 +193,8 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
+                layoutError.setVisibility(View.GONE);
+                webView.setVisibility(View.VISIBLE);
             }
 
             @Override
@@ -160,7 +214,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            // Fullscreen video support
             @Override
             public void onShowCustomView(View view, CustomViewCallback callback) {
                 if (customView != null) {
@@ -201,12 +254,56 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void setupButtons() {
+        // Retry connection
+        btnRetry.setOnClickListener(v -> {
+            if (isNetworkAvailable()) {
+                layoutError.setVisibility(View.GONE);
+                webView.setVisibility(View.VISIBLE);
+                webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+                webView.reload();
+            } else {
+                Toast.makeText(this, "Internet hali ham yo'q. Qaytadan urinib ko'ring.", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // View Offline Downloads button
+        btnDownloads.setOnClickListener(v -> {
+            try {
+                // Open Android Downloads UI
+                Intent intent = new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+            } catch (Exception e) {
+                // Fallback: Open files app or video intent
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    Uri uri = Uri.parse(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES) + "/AniRate");
+                    intent.setDataAndType(uri, "video/*");
+                    startActivity(intent);
+                } catch (Exception ex) {
+                    Toast.makeText(this, "Yuklab olingan animelar Movies/AniRate papkasida saqlangan.", Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+
+        // View Cached page
+        btnCached.setOnClickListener(v -> {
+            layoutError.setVisibility(View.GONE);
+            webView.setVisibility(View.VISIBLE);
+            webView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+            webView.loadUrl(SITE_URL);
+            Toast.makeText(this, "💾 Keshdagi sahifa yuklanmoqda...", Toast.LENGTH_SHORT).show();
+        });
+    }
+
     private void setupSwipeRefresh() {
         swipeRefresh.setColorSchemeResources(R.color.primary);
         swipeRefresh.setOnRefreshListener(() -> {
             if (isNetworkAvailable()) {
                 layoutError.setVisibility(View.GONE);
                 webView.setVisibility(View.VISIBLE);
+                webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
                 webView.reload();
             } else {
                 swipeRefresh.setRefreshing(false);
@@ -214,7 +311,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Pull to refresh only when top of web page is reached
         webView.getViewTreeObserver().addOnScrollChangedListener(() -> {
             swipeRefresh.setEnabled(webView.getScrollY() == 0);
         });
@@ -225,7 +321,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void handleOnBackPressed() {
                 if (customView != null) {
-                    // Exit fullscreen video
                     if (webView.getWebChromeClient() != null) {
                         ((WebChromeClient) webView.getWebChromeClient()).onHideCustomView();
                     }
@@ -237,6 +332,44 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    private void registerNetworkAutoReconnect() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                NetworkRequest request = new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build();
+
+                networkCallback = new ConnectivityManager.NetworkCallback() {
+                    @Override
+                    public void onAvailable(@NonNull Network network) {
+                        runOnUiThread(() -> {
+                            if (layoutError.getVisibility() == View.VISIBLE) {
+                                layoutError.setVisibility(View.GONE);
+                                webView.setVisibility(View.VISIBLE);
+                                webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+                                webView.reload();
+                                Toast.makeText(MainActivity.this, "🟢 Internet qayta ulandi!", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                };
+                cm.registerNetworkCallback(request, networkCallback);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (networkCallback != null) {
+            try {
+                ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                if (cm != null) cm.unregisterNetworkCallback(networkCallback);
+            } catch (Exception ignored) {}
+        }
     }
 
     private void showErrorScreen() {
@@ -256,7 +389,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         webView.saveState(outState);
     }

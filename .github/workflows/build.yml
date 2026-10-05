@@ -34,21 +34,24 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p output
-          cp app/build/outputs/apk/debug/*.apk output/Anirate-v1.0.0.apk
+          cp app/build/outputs/apk/debug/*.apk output/Anirate-v1.1.0.apk
+          if [ -f ~/.android/debug.keystore ]; then
+            cp ~/.android/debug.keystore output/debug.keystore
+          fi
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Anirate-APK
-          path: output/Anirate-v1.0.0.apk
+          name: Anirate-v1.1.0-APK
+          path: output/Anirate-v1.1.0.apk
 
       - name: Release APK
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.0
-          name: "Anirate Android App v1.0.0"
-          body: "Official Anirate Android Application (Debug APK)."
-          files: output/Anirate-v1.0.0.apk
+          tag_name: v1.1.0
+          name: "Anirate Android App v1.1.0 (Offline Mode)"
+          body: "Official Anirate Android Application v1.1.0 with Offline Mode & Video Downloader."
+          files: output/Anirate-v1.1.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
