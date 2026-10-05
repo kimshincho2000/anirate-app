@@ -20,6 +20,10 @@
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/progress_drawable.xml"
     },
     {
+        "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_bg_splash_indicator.xml.flat",
+        "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/bg_splash_indicator.xml"
+    },
+    {
         "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_bg_ios_glass_pill.xml.flat",
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/bg_ios_glass_pill.xml"
     },
@@ -40,16 +44,24 @@
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/bg_player_pill.xml"
     },
     {
+        "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_bg_splash_track.xml.flat",
+        "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/bg_splash_track.xml"
+    },
+    {
+        "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_bg_splash_logo_card.xml.flat",
+        "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/bg_splash_logo_card.xml"
+    },
+    {
         "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_ic_refresh.xml.flat",
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/ic_refresh.xml"
     },
     {
-        "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_bg_player_center_play.xml.flat",
-        "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/bg_player_center_play.xml"
+        "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_bg_splash_glow.xml.flat",
+        "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/bg_splash_glow.xml"
     },
     {
-        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_splash_logo_card.xml.flat",
-        "source": "uz.anirate.app-main-35:/drawable/bg_splash_logo_card.xml"
+        "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_bg_player_center_play.xml.flat",
+        "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/bg_player_center_play.xml"
     },
     {
         "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_ic_forward_10.xml.flat",
@@ -80,10 +92,6 @@
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/bg_player_glass.xml"
     },
     {
-        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_splash_glow.xml.flat",
-        "source": "uz.anirate.app-main-35:/drawable/bg_splash_glow.xml"
-    },
-    {
         "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_bg_player_ripple_badge.xml.flat",
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/bg_player_ripple_badge.xml"
     },
@@ -100,10 +108,6 @@
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/ic_chevron_left.xml"
     },
     {
-        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_splash_indicator.xml.flat",
-        "source": "uz.anirate.app-main-35:/drawable/bg_splash_indicator.xml"
-    },
-    {
         "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/mipmap-xxxhdpi_ic_launcher.png.flat",
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/mipmap-xxxhdpi/ic_launcher.png"
     },
@@ -114,6 +118,10 @@
     {
         "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_ic_speed.xml.flat",
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/ic_speed.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/raw_anirate_sound.mp3.flat",
+        "source": "uz.anirate.app-main-35:/raw/anirate_sound.mp3"
     },
     {
         "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_ic_check.xml.flat",
@@ -148,15 +156,7 @@
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/ic_trash.xml"
     },
     {
-        "merged": "uz.anirate.app-merged_res-33:/drawable_bg_splash_track.xml.flat",
-        "source": "uz.anirate.app-main-35:/drawable/bg_splash_track.xml"
-    },
-    {
         "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_bg_ios_dynamic_island.xml.flat",
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/bg_ios_dynamic_island.xml"
-    },
-    {
-        "merged": "uz.anirate.app-merged_res-33:/layout_activity_main.xml.flat",
-        "source": "uz.anirate.app-main-35:/layout/activity_main.xml"
     }
 ]

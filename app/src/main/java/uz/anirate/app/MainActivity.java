@@ -85,13 +85,16 @@ import org.json.JSONObject;
 import android.animation.ObjectAnimator;
 import android.animation.PropertyValuesHolder;
 import android.animation.ValueAnimator;
+import android.app.Notification;
+import android.content.ContentResolver;
+import android.media.AudioAttributes;
 import android.webkit.WebResourceResponse;
 import androidx.annotation.Nullable;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String SITE_URL = "https://anirate.wwwz.uz";
-    private static final String NOTIFICATION_CHANNEL_ID = "anirate_downloads_channel_v4";
+    private static final String NOTIFICATION_CHANNEL_ID = "anirate_downloads_channel_v5";
 
     private WebView webView;
     private SwipeRefreshLayout swipeRefresh;
@@ -243,7 +246,17 @@ public class MainActivity extends AppCompatActivity {
             );
             channel.setDescription("Anime qismlarini yuklab olish holati va foizi");
             channel.enableVibration(true);
+            channel.setVibrationPattern(new long[]{0, 150, 80, 150});
             channel.setShowBadge(true);
+            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+
+            Uri soundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.anirate_sound);
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .build();
+            channel.setSound(soundUri, audioAttributes);
+
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) {
                 nm.createNotificationChannel(channel);
@@ -727,6 +740,16 @@ public class MainActivity extends AppCompatActivity {
         return views;
     }
 
+    private void playNotificationSound() {
+        try {
+            MediaPlayer mp = MediaPlayer.create(MainActivity.this, R.raw.anirate_sound);
+            if (mp != null) {
+                mp.setOnCompletionListener(MediaPlayer::release);
+                mp.start();
+            }
+        } catch (Throwable ignored) {}
+    }
+
     private void updateInAppNotification(String title, String subtitle, int progress, boolean isDone, boolean isFailed) {
         runOnUiThread(() -> {
             if (iosInAppBanner == null) return;
@@ -947,10 +970,13 @@ public class MainActivity extends AppCompatActivity {
                 sendRemoteLog("DOWNLOAD_SUCCESS", "Successfully finished: " + targetFile.getName() + " (" + targetFile.length() + " bytes)");
 
                 // Complete Notification (iOS Style)
+                Uri soundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.anirate_sound);
                 builder.setContentTitle("Yuklab olindi! ✨")
                         .setContentText(fileName + " — ko'rish uchun bosing")
                         .setProgress(0, 0, false)
                         .setOngoing(false)
+                        .setSound(soundUri)
+                        .setDefaults(Notification.DEFAULT_VIBRATE)
                         .setAutoCancel(true);
 
                 try {
@@ -964,6 +990,7 @@ public class MainActivity extends AppCompatActivity {
                     if (nm != null) nm.notify(notificationId, builder.build());
                 } catch (Throwable ignored) {}
 
+                runOnUiThread(this::playNotificationSound);
                 updateInAppNotification("AniRate • Yuklab olindi! ✨", fileName, 100, true, false);
                 runOnUiThread(this::loadDownloadedAnimeFiles);
 

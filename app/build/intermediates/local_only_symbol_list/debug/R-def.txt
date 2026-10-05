@@ -100,6 +100,7 @@ layout activity_main
 layout item_download
 layout notification_ios_banner
 mipmap ic_launcher
+raw anirate_sound
 string app_name
 string download_started
 string no_internet
