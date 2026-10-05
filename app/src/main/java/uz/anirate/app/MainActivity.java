@@ -159,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         createNotificationChannel();
-        requestNotificationPermission();
+        checkAndRequestAllPermissions();
 
         initViews();
         setupWebView();
@@ -211,13 +211,32 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void requestNotificationPermission() {
+    private void checkAndRequestAllPermissions() {
+        List<String> neededPermissions = new ArrayList<>();
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.POST_NOTIFICATIONS}, 101);
+                neededPermissions.add(Manifest.permission.POST_NOTIFICATIONS);
             }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO)
+                    != PackageManager.PERMISSION_GRANTED) {
+                neededPermissions.add(Manifest.permission.READ_MEDIA_VIDEO);
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                neededPermissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                neededPermissions.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+            }
+        }
+
+        if (!neededPermissions.isEmpty()) {
+            ActivityCompat.requestPermissions(this,
+                    neededPermissions.toArray(new String[0]), 101);
         }
     }
 
