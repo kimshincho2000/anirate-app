@@ -28,15 +28,47 @@
         android:progressDrawable="@drawable/progress_drawable"
         android:visibility="gone" />
 
+    <!-- Floating Quick Access to Saved Downloads (Always available while browsing) -->
+    <LinearLayout
+        android:id="@+id/btn_quick_downloads_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="68dp"
+        android:background="@drawable/bg_quick_downloads_fab"
+        android:clickable="true"
+        android:elevation="6dp"
+        android:focusable="true"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingHorizontal="14dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📥"
+            android:textSize="15sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="Saqlanganlar"
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
     <!-- 2. Offline Mode Screen (When no internet connection) -->
     <LinearLayout
         android:id="@+id/layout_error"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@color/background"
         android:gravity="center"
         android:orientation="vertical"
         android:padding="28dp"
-        android:background="@color/background"
         android:visibility="gone">
 
         <TextView
@@ -90,18 +122,18 @@
         android:id="@+id/layout_downloads"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
         android:background="@color/background"
+        android:orientation="vertical"
         android:visibility="gone">
 
         <!-- Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:orientation="horizontal"
+            android:background="#141721"
             android:gravity="center_vertical"
-            android:paddingHorizontal="16dp"
-            android:background="#141721">
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
 
             <Button
                 android:id="@+id/btn_close_downloads"
@@ -109,14 +141,14 @@
                 android:layout_height="wrap_content"
                 android:backgroundTint="#2D3748"
                 android:text="◀️ Orqaga"
-                android:textSize="13sp"
-                android:textColor="@color/white" />
+                android:textColor="@color/white"
+                android:textSize="13sp" />
 
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:layout_marginStart="16dp"
+                android:layout_weight="1"
                 android:text="📥 Saqlangan Animelar"
                 android:textColor="@color/white"
                 android:textSize="18sp"
@@ -131,7 +163,7 @@
             android:layout_marginTop="60dp"
             android:gravity="center"
             android:padding="20dp"
-            android:text="Hozircha yuklab olingan animelar yo'q.\nSaytdan animeni yuklab olsangiz, bu yerda saqlanadi."
+            android:text="Hozircha yuklab olingan animelar yo'q.\nSaytda animeni ochib «Yuklab olish» tugmasini bossangiz, bu yerda saqlanadi."
             android:textColor="#6B7280"
             android:textSize="15sp"
             android:visibility="gone" />
@@ -147,7 +179,7 @@
             android:paddingTop="8dp" />
     </LinearLayout>
 
-    <!-- 4. Built-in Native Offline Video Player -->
+    <!-- 4. Built-in 1:1 Native Video Player (AniRate / GoldAnime Glassmorphism Engine) -->
     <FrameLayout
         android:id="@+id/layout_internal_player"
         android:layout_width="match_parent"
@@ -155,44 +187,252 @@
         android:background="#000000"
         android:visibility="gone">
 
+        <!-- Video Surface -->
         <VideoView
             android:id="@+id/internal_video_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_gravity="center" />
 
-        <!-- Player Top Bar (Back button and title) -->
-        <LinearLayout
-            android:id="@+id/player_top_bar"
+        <!-- Gesture Surface to detect taps and double taps -->
+        <View
+            android:id="@+id/player_touch_surface"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_gravity="top"
-            android:background="#80000000"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="16dp">
+            android:layout_height="match_parent"
+            android:clickable="true"
+            android:focusable="true" />
 
-            <Button
-                android:id="@+id/btn_exit_player"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="#FF2A55"
-                android:text="✕ Chiqish"
-                android:textColor="@color/white"
-                android:textSize="12sp" />
+        <!-- Center Glowing Red Play/Pause Crystal Button (1:1 with site) -->
+        <FrameLayout
+            android:id="@+id/player_center_play_btn"
+            android:layout_width="68dp"
+            android:layout_height="68dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_player_center_play"
+            android:clickable="true"
+            android:elevation="10dp"
+            android:focusable="true"
+            android:visibility="visible">
 
             <TextView
-                android:id="@+id/tv_player_title"
-                android:layout_width="0dp"
+                android:id="@+id/tv_center_play_icon"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="12dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:text="Anime Video"
+                android:layout_gravity="center"
+                android:text="▶"
                 android:textColor="@color/white"
-                android:textSize="14sp" />
+                android:textSize="26sp"
+                android:textStyle="bold" />
+        </FrameLayout>
+
+        <!-- Left Seek Ripple (-10s) -->
+        <LinearLayout
+            android:id="@+id/ripple_left"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical|start"
+            android:layout_marginStart="48dp"
+            android:background="@drawable/bg_player_ripple_badge"
+            android:elevation="12dp"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⏪ -10s"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                android:textStyle="bold" />
         </LinearLayout>
+
+        <!-- Right Seek Ripple (+10s) -->
+        <LinearLayout
+            android:id="@+id/ripple_right"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical|end"
+            android:layout_marginEnd="48dp"
+            android:background="@drawable/bg_player_ripple_badge"
+            android:elevation="12dp"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="+10s ⏩"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Controls Overlay (Top Header Bar & Floating Glass Bottom Bar) -->
+        <FrameLayout
+            android:id="@+id/player_controls_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!-- Top Header Glass Bar -->
+            <LinearLayout
+                android:id="@+id/player_top_bar"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_gravity="top"
+                android:background="#D90E121C"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp">
+
+                <TextView
+                    android:id="@+id/btn_exit_player"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_player_pill"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:text="◀ Orqaga"
+                    android:textColor="@color/white"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_player_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="Anime Video"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/btn_player_speed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_player_pill"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:text="1.0x"
+                    android:textColor="@color/white"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Bottom Floating Glass Island Bar (1:1 with site) -->
+            <LinearLayout
+                android:id="@+id/player_bottom_bar"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:layout_gravity="bottom"
+                android:layout_margin="14dp"
+                android:background="@drawable/bg_player_glass"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp">
+
+                <!-- Play/Pause mini button -->
+                <TextView
+                    android:id="@+id/btn_player_play"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="6dp"
+                    android:text="▶"
+                    android:textColor="@color/white"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <!-- Rewind 10s -->
+                <TextView
+                    android:id="@+id/btn_player_rewind"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:background="@drawable/bg_player_pill"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="4dp"
+                    android:text="-10s"
+                    android:textColor="#E2E8F0"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <!-- Forward 10s -->
+                <TextView
+                    android:id="@+id/btn_player_forward"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:background="@drawable/bg_player_pill"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="4dp"
+                    android:text="+10s"
+                    android:textColor="#E2E8F0"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <!-- Current Time -->
+                <TextView
+                    android:id="@+id/tv_player_current_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:text="00:00"
+                    android:textColor="@color/white"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <!-- AniRate Red SeekBar -->
+                <SeekBar
+                    android:id="@+id/player_seekbar"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="6dp"
+                    android:layout_weight="1"
+                    android:max="1000"
+                    android:progressDrawable="@drawable/player_seekbar_progress"
+                    android:thumb="@drawable/player_seekbar_thumb" />
+
+                <!-- Total Duration -->
+                <TextView
+                    android:id="@+id/tv_player_duration"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:text="00:00"
+                    android:textColor="#9CA3AF"
+                    android:textSize="12sp" />
+
+                <!-- Fullscreen / Reset View Button -->
+                <TextView
+                    android:id="@+id/btn_player_fullscreen"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="6dp"
+                    android:text="⛶"
+                    android:textColor="@color/white"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </FrameLayout>
     </FrameLayout>
 
     <!-- 5. Fullscreen container for Web HTML5 videos -->

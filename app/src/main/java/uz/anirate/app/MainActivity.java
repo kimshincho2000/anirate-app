@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.media.MediaPlayer;
+import android.media.PlaybackParams;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -17,7 +18,11 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.GestureDetector;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -35,8 +40,8 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.MediaController;
 import android.widget.ProgressBar;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
@@ -50,6 +55,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -61,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout layoutError;
     private Button btnRetry;
     private Button btnOpenDownloads;
+    private LinearLayout btnQuickDownloadsFab;
     private FrameLayout fullscreenContainer;
 
     // In-App Downloads Management
@@ -71,12 +78,47 @@ public class MainActivity extends AppCompatActivity {
     private DownloadAdapter downloadAdapter;
     private final List<File> downloadedFiles = new ArrayList<>();
 
-    // In-App Video Player
+    // 1:1 In-App Video Player (AniRate / GoldAnime Glassmorphism Engine)
     private FrameLayout layoutInternalPlayer;
     private VideoView internalVideoView;
+    private View playerTouchSurface;
+    private FrameLayout playerCenterPlayBtn;
+    private TextView tvCenterPlayIcon;
+    private LinearLayout rippleLeft;
+    private LinearLayout rippleRight;
+    private FrameLayout playerControlsOverlay;
+    private TextView btnExitPlayer;
     private TextView tvPlayerTitle;
-    private Button btnExitPlayer;
-    private MediaController mediaController;
+    private TextView btnPlayerSpeed;
+    private TextView btnPlayerPlay;
+    private TextView btnPlayerRewind;
+    private TextView btnPlayerForward;
+    private TextView tvPlayerCurrentTime;
+    private SeekBar playerSeekBar;
+    private TextView tvPlayerDuration;
+    private TextView btnPlayerFullscreen;
+
+    private MediaPlayer mediaPlayer;
+    private boolean isUserSeeking = false;
+    private float currentSpeed = 1.0f;
+
+    private final Handler progressHandler = new Handler(Looper.getMainLooper());
+    private final Handler hideControlsHandler = new Handler(Looper.getMainLooper());
+    private final Runnable hideControlsRunnable = this::hideControls;
+
+    private final Runnable progressRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (layoutInternalPlayer.getVisibility() == View.VISIBLE && internalVideoView != null) {
+                if (!isUserSeeking && internalVideoView.isPlaying()) {
+                    int cur = internalVideoView.getCurrentPosition();
+                    int dur = internalVideoView.getDuration();
+                    updateTimeline(cur, dur);
+                }
+                progressHandler.postDelayed(this, 500);
+            }
+        }
+    };
 
     private View customView;
     private WebChromeClient.CustomViewCallback customViewCallback;
@@ -129,6 +171,7 @@ public class MainActivity extends AppCompatActivity {
         layoutError = findViewById(R.id.layout_error);
         btnRetry = findViewById(R.id.btn_retry);
         btnOpenDownloads = findViewById(R.id.btn_open_downloads);
+        btnQuickDownloadsFab = findViewById(R.id.btn_quick_downloads_fab);
         fullscreenContainer = findViewById(R.id.fullscreen_container);
 
         layoutDownloads = findViewById(R.id.layout_downloads);
@@ -136,15 +179,31 @@ public class MainActivity extends AppCompatActivity {
         tvEmptyDownloads = findViewById(R.id.tv_empty_downloads);
         btnCloseDownloads = findViewById(R.id.btn_close_downloads);
 
+        // 1:1 Video Player views
         layoutInternalPlayer = findViewById(R.id.layout_internal_player);
         internalVideoView = findViewById(R.id.internal_video_view);
-        tvPlayerTitle = findViewById(R.id.tv_player_title);
+        playerTouchSurface = findViewById(R.id.player_touch_surface);
+        playerCenterPlayBtn = findViewById(R.id.player_center_play_btn);
+        tvCenterPlayIcon = findViewById(R.id.tv_center_play_icon);
+        rippleLeft = findViewById(R.id.ripple_left);
+        rippleRight = findViewById(R.id.ripple_right);
+        playerControlsOverlay = findViewById(R.id.player_controls_overlay);
         btnExitPlayer = findViewById(R.id.btn_exit_player);
+        tvPlayerTitle = findViewById(R.id.tv_player_title);
+        btnPlayerSpeed = findViewById(R.id.btn_player_speed);
+        btnPlayerPlay = findViewById(R.id.btn_player_play);
+        btnPlayerRewind = findViewById(R.id.btn_player_rewind);
+        btnPlayerForward = findViewById(R.id.btn_player_forward);
+        tvPlayerCurrentTime = findViewById(R.id.tv_player_current_time);
+        playerSeekBar = findViewById(R.id.player_seekbar);
+        tvPlayerDuration = findViewById(R.id.tv_player_duration);
+        btnPlayerFullscreen = findViewById(R.id.btn_player_fullscreen);
 
         btnRetry.setOnClickListener(v -> {
             if (isNetworkAvailable()) {
                 layoutError.setVisibility(View.GONE);
                 webView.setVisibility(View.VISIBLE);
+                btnQuickDownloadsFab.setVisibility(View.VISIBLE);
                 webView.reload();
             } else {
                 Toast.makeText(this, "Internet aloqasi yo'q. Qaytadan urinib ko'ring.", Toast.LENGTH_SHORT).show();
@@ -152,17 +211,21 @@ public class MainActivity extends AppCompatActivity {
         });
 
         btnOpenDownloads.setOnClickListener(v -> showDownloadsList());
+        btnQuickDownloadsFab.setOnClickListener(v -> showDownloadsList());
+
         btnCloseDownloads.setOnClickListener(v -> {
             layoutDownloads.setVisibility(View.GONE);
             if (!isNetworkAvailable()) {
                 layoutError.setVisibility(View.VISIBLE);
+                btnQuickDownloadsFab.setVisibility(View.GONE);
             } else {
                 webView.setVisibility(View.VISIBLE);
+                btnQuickDownloadsFab.setVisibility(View.VISIBLE);
             }
         });
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
+    @SuppressLint({"SetJavaScriptEnabled", "ClickableViewAccessibility"})
     private void setupWebView() {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -183,46 +246,20 @@ public class MainActivity extends AppCompatActivity {
 
         // User Agent
         String defaultUA = settings.getUserAgentString();
-        settings.setUserAgentString(defaultUA + " AniRateApp/1.2");
+        settings.setUserAgentString(defaultUA + " AniRateApp/1.3");
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
-        // JavaScript Interface for App & Admin features
-        webView.addJavascriptInterface(new WebAppInterface(), "AniRateNative");
+        // JavaScript Interfaces
+        WebAppInterface webAppInterface = new WebAppInterface();
+        webView.addJavascriptInterface(webAppInterface, "AniRateNative");
+        webView.addJavascriptInterface(webAppInterface, "AndroidApp");
 
-        // Download Listener: Download anime episodes for in-app offline watching
+        // Download Listener: Standard fallback download
         webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
-            try {
-                String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
-                if (fileName == null || fileName.isEmpty()) {
-                    fileName = "AniRate_Episode_" + System.currentTimeMillis() + ".mp4";
-                }
-
-                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-                request.setMimeType(mimeType);
-                String cookies = CookieManager.getInstance().getCookie(url);
-                request.addRequestHeader("cookie", cookies);
-                request.addRequestHeader("User-Agent", userAgent);
-                request.setDescription("AniRate orqali oflayn ko'rish uchun yuklanmoqda...");
-                request.setTitle(fileName);
-                request.allowScanningByMediaScanner();
-                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-
-                // Save into public Movies/AniRate folder
-                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_MOVIES, "AniRate/" + fileName);
-
-                DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-                if (dm != null) {
-                    dm.enqueue(request);
-                    Toast.makeText(MainActivity.this, "📥 Anime yuklab olish boshlandi: " + fileName, Toast.LENGTH_LONG).show();
-                }
-            } catch (Exception e) {
-                try {
-                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                    startActivity(intent);
-                } catch (Exception ignored) {}
-            }
+            String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
+            startDirectDownload(url, fileName);
         });
 
         webView.setWebViewClient(new WebViewClient() {
@@ -264,6 +301,7 @@ public class MainActivity extends AppCompatActivity {
                 swipeRefresh.setRefreshing(false);
                 layoutError.setVisibility(View.GONE);
                 webView.setVisibility(View.VISIBLE);
+                btnQuickDownloadsFab.setVisibility(View.VISIBLE);
 
                 // Automatically check if logged-in user is an Admin
                 checkAdminStatus();
@@ -304,6 +342,7 @@ public class MainActivity extends AppCompatActivity {
                 ));
                 fullscreenContainer.setVisibility(View.VISIBLE);
                 swipeRefresh.setVisibility(View.GONE);
+                btnQuickDownloadsFab.setVisibility(View.GONE);
             }
 
             @Override
@@ -316,6 +355,7 @@ public class MainActivity extends AppCompatActivity {
                 fullscreenContainer.removeView(customView);
                 fullscreenContainer.setVisibility(View.GONE);
                 swipeRefresh.setVisibility(View.VISIBLE);
+                btnQuickDownloadsFab.setVisibility(View.VISIBLE);
 
                 if (customViewCallback != null) {
                     customViewCallback.onCustomViewHidden();
@@ -324,6 +364,42 @@ public class MainActivity extends AppCompatActivity {
                 customViewCallback = null;
             }
         });
+    }
+
+    // Direct Video Download to Movies/AniRate
+    private void startDirectDownload(String url, String fileName) {
+        try {
+            if (fileName == null || fileName.trim().isEmpty()) {
+                fileName = "AniRate_Episode_" + System.currentTimeMillis() + ".mp4";
+            }
+            if (!fileName.toLowerCase().endsWith(".mp4") && !fileName.toLowerCase().endsWith(".mkv") && !fileName.toLowerCase().endsWith(".webm")) {
+                fileName += ".mp4";
+            }
+
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+            request.setMimeType("video/mp4");
+            String cookies = CookieManager.getInstance().getCookie(url);
+            if (cookies != null) request.addRequestHeader("cookie", cookies);
+            request.addRequestHeader("User-Agent", webView.getSettings().getUserAgentString());
+            request.setDescription("AniRate orqali oflayn ko'rish uchun yuklanmoqda...");
+            request.setTitle(fileName);
+            request.allowScanningByMediaScanner();
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+
+            // Ensure directory exists
+            File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "AniRate");
+            if (!dir.exists()) dir.mkdirs();
+
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_MOVIES, "AniRate/" + fileName);
+
+            DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+            if (dm != null) {
+                dm.enqueue(request);
+                Toast.makeText(MainActivity.this, "📥 Anime yuklab olish boshlandi: " + fileName, Toast.LENGTH_LONG).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(MainActivity.this, "Yuklab olishda xatolik: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     // Checks if the website user is Admin: Unlocks screenshot protection for admin, blocks for guests/users
@@ -353,6 +429,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @JavascriptInterface
+        public void downloadVideo(String url, String filename) {
+            runOnUiThread(() -> startDirectDownload(url, filename));
+        }
+
+        @JavascriptInterface
         public void openOfflineDownloads() {
             runOnUiThread(MainActivity.this::showDownloadsList);
         }
@@ -368,6 +449,7 @@ public class MainActivity extends AppCompatActivity {
         loadDownloadedAnimeFiles();
         layoutError.setVisibility(View.GONE);
         webView.setVisibility(View.GONE);
+        btnQuickDownloadsFab.setVisibility(View.GONE);
         layoutDownloads.setVisibility(View.VISIBLE);
     }
 
@@ -413,18 +495,112 @@ public class MainActivity extends AppCompatActivity {
         return f.isFile() && (name.endsWith(".mp4") || name.endsWith(".mkv") || name.endsWith(".webm") || name.endsWith(".mov"));
     }
 
-    // In-App Video Player (Plays downloaded animes directly inside the APK!)
+    // =========================================================================
+    // 1:1 NATIVE VIDEO PLAYER ENGINE (AniRate / GoldAnime Glassmorphism Engine)
+    // =========================================================================
+    @SuppressLint("ClickableViewAccessibility")
     private void setupInternalPlayer() {
-        mediaController = new MediaController(this);
-        mediaController.setAnchorView(internalVideoView);
-        internalVideoView.setMediaController(mediaController);
+        // Gesture Detector for Single Tap (toggle controls) and Double Tap (+/- 10s seek)
+        GestureDetector gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onSingleTapConfirmed(MotionEvent e) {
+                toggleControlsVisibility();
+                return true;
+            }
 
+            @Override
+            public boolean onDoubleTap(MotionEvent e) {
+                int width = playerTouchSurface.getWidth();
+                if (width <= 0) width = 1;
+                float x = e.getX();
+
+                if (x < width * 0.38f) {
+                    seekRelative(-10);
+                } else if (x > width * 0.62f) {
+                    seekRelative(10);
+                } else {
+                    togglePlayPause();
+                }
+                return true;
+            }
+        });
+
+        playerTouchSurface.setOnTouchListener((v, event) -> {
+            gestureDetector.onTouchEvent(event);
+            return true;
+        });
+
+        // Center Big Play/Pause Crystal Button
+        playerCenterPlayBtn.setOnClickListener(v -> togglePlayPause());
+
+        // Mini Play/Pause button in bottom island
+        btnPlayerPlay.setOnClickListener(v -> togglePlayPause());
+
+        // Relative skip buttons (-10s / +10s)
+        btnPlayerRewind.setOnClickListener(v -> seekRelative(-10));
+        btnPlayerForward.setOnClickListener(v -> seekRelative(10));
+
+        // Speed Selector Button (0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 2.0x)
+        btnPlayerSpeed.setOnClickListener(v -> showSpeedDialog());
+
+        // Fullscreen toggle
+        btnPlayerFullscreen.setOnClickListener(v -> {
+            Toast.makeText(this, "To'liq ekran rejimi yoqilgan", Toast.LENGTH_SHORT).show();
+            resetAutoHideTimer();
+        });
+
+        // Exit Player
+        btnExitPlayer.setOnClickListener(v -> closeInternalPlayer());
+
+        // Zero-Lag SeekBar scrubbing
+        playerSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    int duration = internalVideoView.getDuration();
+                    int targetTime = (int) ((progress / 1000.0) * duration);
+                    tvPlayerCurrentTime.setText(formatTime(targetTime));
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                isUserSeeking = true;
+                hideControlsHandler.removeCallbacks(hideControlsRunnable);
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int duration = internalVideoView.getDuration();
+                int targetTime = (int) ((seekBar.getProgress() / 1000.0) * duration);
+                internalVideoView.seekTo(targetTime);
+                isUserSeeking = false;
+                resetAutoHideTimer();
+            }
+        });
+
+        // Video Event Listeners
         internalVideoView.setOnPreparedListener(mp -> {
+            mediaPlayer = mp;
             progressBar.setVisibility(View.GONE);
-            mp.start();
+            applyPlaybackSpeed();
+
+            int duration = internalVideoView.getDuration();
+            tvPlayerDuration.setText(formatTime(duration));
+            updateTimeline(0, duration);
+
+            internalVideoView.start();
+            tvCenterPlayIcon.setText("⏸");
+            btnPlayerPlay.setText("⏸");
+
+            progressHandler.post(progressRunnable);
+            resetAutoHideTimer();
         });
 
         internalVideoView.setOnCompletionListener(mp -> {
+            tvCenterPlayIcon.setText("▶");
+            btnPlayerPlay.setText("▶");
+            showControlsPermanently();
             Toast.makeText(this, "Anime qismi yakunlandi", Toast.LENGTH_SHORT).show();
         });
 
@@ -433,34 +609,174 @@ public class MainActivity extends AppCompatActivity {
             closeInternalPlayer();
             return true;
         });
-
-        btnExitPlayer.setOnClickListener(v -> closeInternalPlayer());
     }
 
     private void playVideoInApp(File videoFile) {
         layoutDownloads.setVisibility(View.GONE);
         webView.setVisibility(View.GONE);
         layoutError.setVisibility(View.GONE);
+        btnQuickDownloadsFab.setVisibility(View.GONE);
         layoutInternalPlayer.setVisibility(View.VISIBLE);
 
         tvPlayerTitle.setText(videoFile.getName());
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
+        showControlsPermanently();
         internalVideoView.setVideoPath(videoFile.getAbsolutePath());
         internalVideoView.requestFocus();
-        internalVideoView.start();
     }
 
     private void closeInternalPlayer() {
+        progressHandler.removeCallbacks(progressRunnable);
+        hideControlsHandler.removeCallbacks(hideControlsRunnable);
+
         if (internalVideoView.isPlaying()) {
             internalVideoView.stopPlayback();
         }
+        mediaPlayer = null;
+        currentSpeed = 1.0f;
+        btnPlayerSpeed.setText("1.0x");
+
         layoutInternalPlayer.setVisibility(View.GONE);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         layoutDownloads.setVisibility(View.VISIBLE);
+    }
+
+    private void togglePlayPause() {
+        if (internalVideoView.isPlaying()) {
+            internalVideoView.pause();
+            tvCenterPlayIcon.setText("▶");
+            btnPlayerPlay.setText("▶");
+            showControlsPermanently();
+        } else {
+            internalVideoView.start();
+            tvCenterPlayIcon.setText("⏸");
+            btnPlayerPlay.setText("⏸");
+            resetAutoHideTimer();
+        }
+    }
+
+    private void seekRelative(int seconds) {
+        int cur = internalVideoView.getCurrentPosition();
+        int dur = internalVideoView.getDuration();
+        int target = Math.max(0, Math.min(dur, cur + seconds * 1000));
+        internalVideoView.seekTo(target);
+        updateTimeline(target, dur);
+
+        if (seconds < 0) {
+            showSeekRipple(rippleLeft);
+        } else {
+            showSeekRipple(rippleRight);
+        }
+        resetAutoHideTimer();
+    }
+
+    private void showSeekRipple(View rippleView) {
+        rippleView.animate().cancel();
+        rippleView.setVisibility(View.VISIBLE);
+        rippleView.setAlpha(1f);
+        rippleView.animate()
+                .alpha(0f)
+                .setDuration(600)
+                .withEndAction(() -> rippleView.setVisibility(View.GONE))
+                .start();
+    }
+
+    private void updateTimeline(int currentMs, int durationMs) {
+        tvPlayerCurrentTime.setText(formatTime(currentMs));
+        if (durationMs > 0) {
+            tvPlayerDuration.setText(formatTime(durationMs));
+            int progress = (int) (((double) currentMs / durationMs) * 1000);
+            playerSeekBar.setProgress(progress);
+        }
+    }
+
+    private void showSpeedDialog() {
+        String[] speeds = {"0.5x", "0.75x", "1.0x (Normal)", "1.25x", "1.5x", "2.0x"};
+        float[] speedValues = {0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f};
+
+        new AlertDialog.Builder(this)
+                .setTitle("Ijro tezligi")
+                .setItems(speeds, (dialog, which) -> {
+                    currentSpeed = speedValues[which];
+                    btnPlayerSpeed.setText(speeds[which].replace(" (Normal)", ""));
+                    applyPlaybackSpeed();
+                    resetAutoHideTimer();
+                })
+                .show();
+    }
+
+    private void applyPlaybackSpeed() {
+        if (mediaPlayer != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                PlaybackParams params = mediaPlayer.getPlaybackParams();
+                params.setSpeed(currentSpeed);
+                mediaPlayer.setPlaybackParams(params);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private void resetAutoHideTimer() {
+        hideControlsHandler.removeCallbacks(hideControlsRunnable);
+        if (internalVideoView.isPlaying()) {
+            hideControlsHandler.postDelayed(hideControlsRunnable, 3500);
+        }
+    }
+
+    private void hideControls() {
+        if (internalVideoView.isPlaying()) {
+            playerControlsOverlay.animate()
+                    .alpha(0f)
+                    .setDuration(300)
+                    .withEndAction(() -> playerControlsOverlay.setVisibility(View.GONE))
+                    .start();
+
+            playerCenterPlayBtn.animate()
+                    .alpha(0f)
+                    .setDuration(300)
+                    .withEndAction(() -> playerCenterPlayBtn.setVisibility(View.GONE))
+                    .start();
+        }
+    }
+
+    private void showControls() {
+        playerControlsOverlay.setVisibility(View.VISIBLE);
+        playerControlsOverlay.animate().alpha(1f).setDuration(250).start();
+
+        playerCenterPlayBtn.setVisibility(View.VISIBLE);
+        playerCenterPlayBtn.animate().alpha(1f).setDuration(250).start();
+
+        resetAutoHideTimer();
+    }
+
+    private void showControlsPermanently() {
+        hideControlsHandler.removeCallbacks(hideControlsRunnable);
+        playerControlsOverlay.setVisibility(View.VISIBLE);
+        playerControlsOverlay.setAlpha(1f);
+        playerCenterPlayBtn.setVisibility(View.VISIBLE);
+        playerCenterPlayBtn.setAlpha(1f);
+    }
+
+    private void toggleControlsVisibility() {
+        if (playerControlsOverlay.getVisibility() == View.VISIBLE) {
+            hideControls();
+        } else {
+            showControls();
+        }
+    }
+
+    private String formatTime(int millis) {
+        int seconds = (millis / 1000) % 60;
+        int minutes = (millis / (1000 * 60)) % 60;
+        int hours = (millis / (1000 * 60 * 60));
+        if (hours > 0) {
+            return String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds);
+        } else {
+            return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds);
+        }
     }
 
     private class DownloadAdapter extends BaseAdapter {
@@ -518,10 +834,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupSwipeRefresh() {
         swipeRefresh.setColorSchemeResources(R.color.primary);
+        swipeRefresh.setProgressBackgroundColorSchemeResource(R.color.surface);
+
         swipeRefresh.setOnRefreshListener(() -> {
             if (isNetworkAvailable()) {
                 layoutError.setVisibility(View.GONE);
                 webView.setVisibility(View.VISIBLE);
+                btnQuickDownloadsFab.setVisibility(View.VISIBLE);
                 webView.reload();
             } else {
                 swipeRefresh.setRefreshing(false);
@@ -544,8 +863,10 @@ public class MainActivity extends AppCompatActivity {
                     layoutDownloads.setVisibility(View.GONE);
                     if (isNetworkAvailable()) {
                         webView.setVisibility(View.VISIBLE);
+                        btnQuickDownloadsFab.setVisibility(View.VISIBLE);
                     } else {
                         layoutError.setVisibility(View.VISIBLE);
+                        btnQuickDownloadsFab.setVisibility(View.GONE);
                     }
                 } else if (customView != null) {
                     if (webView.getWebChromeClient() != null) {
@@ -562,38 +883,29 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void registerNetworkAutoReconnect() {
-        try {
-            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-            if (cm != null) {
-                NetworkRequest request = new NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .build();
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm != null) {
+            NetworkRequest request = new NetworkRequest.Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .build();
 
-                networkCallback = new ConnectivityManager.NetworkCallback() {
-                    @Override
-                    public void onAvailable(@NonNull Network network) {
-                        runOnUiThread(() -> {
-                            if (layoutError.getVisibility() == View.VISIBLE && layoutDownloads.getVisibility() != View.VISIBLE && layoutInternalPlayer.getVisibility() != View.VISIBLE) {
-                                layoutError.setVisibility(View.GONE);
-                                webView.setVisibility(View.VISIBLE);
-                                webView.reload();
-                                Toast.makeText(MainActivity.this, "🟢 Internet qayta ulandi!", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                    }
-                };
-                cm.registerNetworkCallback(request, networkCallback);
-            }
-        } catch (Exception ignored) {}
-    }
+            networkCallback = new ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onAvailable(@NonNull Network network) {
+                    runOnUiThread(() -> {
+                        if (layoutError.getVisibility() == View.VISIBLE && layoutDownloads.getVisibility() != View.VISIBLE && layoutInternalPlayer.getVisibility() != View.VISIBLE) {
+                            layoutError.setVisibility(View.GONE);
+                            webView.setVisibility(View.VISIBLE);
+                            btnQuickDownloadsFab.setVisibility(View.VISIBLE);
+                            webView.reload();
+                            Toast.makeText(MainActivity.this, "🟢 Internet qayta ulandi!", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            };
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (networkCallback != null) {
             try {
-                ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-                if (cm != null) cm.unregisterNetworkCallback(networkCallback);
+                cm.registerNetworkCallback(request, networkCallback);
             } catch (Exception ignored) {}
         }
     }
@@ -602,21 +914,41 @@ public class MainActivity extends AppCompatActivity {
         progressBar.setVisibility(View.GONE);
         swipeRefresh.setRefreshing(false);
         webView.setVisibility(View.GONE);
+        btnQuickDownloadsFab.setVisibility(View.GONE);
         layoutError.setVisibility(View.VISIBLE);
     }
 
     private boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (cm != null) {
-            NetworkInfo netInfo = cm.getActiveNetworkInfo();
-            return netInfo != null && netInfo.isConnected();
+        if (cm == null) return false;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Network network = cm.getActiveNetwork();
+            if (network == null) return false;
+            NetworkCapabilities capabilities = cm.getNetworkCapabilities(network);
+            return capabilities != null && (
+                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            );
+        } else {
+            NetworkInfo networkInfo = cm.getActiveNetworkInfo();
+            return networkInfo != null && networkInfo.isConnected();
         }
-        return false;
     }
 
     @Override
-    protected void onSaveInstanceState(@NonNull Bundle outState) {
-        super.onSaveInstanceState(outState);
-        webView.saveState(outState);
+    protected void onDestroy() {
+        super.onDestroy();
+        progressHandler.removeCallbacks(progressRunnable);
+        hideControlsHandler.removeCallbacks(hideControlsRunnable);
+        if (networkCallback != null) {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                try {
+                    cm.unregisterNetworkCallback(networkCallback);
+                } catch (Exception ignored) {}
+            }
+        }
     }
 }
