@@ -90,12 +90,15 @@ import android.content.ContentResolver;
 import android.media.AudioAttributes;
 import android.webkit.WebResourceResponse;
 import androidx.annotation.Nullable;
+import androidx.webkit.WebViewAssetLoader;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String SITE_URL = "https://anirate.wwwz.uz";
+    private static final String APP_LOCAL_URL = "https://appassets.androidplatform.net/assets/web/index.html";
     private static final String NOTIFICATION_CHANNEL_ID = "anirate_downloads_channel_v5";
 
+    private WebViewAssetLoader assetLoader;
     private WebView webView;
     private SwipeRefreshLayout swipeRefresh;
     private ProgressBar progressBar;
@@ -114,6 +117,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvAdminLabel;
     private DownloadAdapter downloadAdapter;
     private final List<File> downloadedFiles = new ArrayList<>();
+    private long backPressedTime = 0;
 
     // 1:1 In-App Video Player (AniRate / GoldAnime iOS Glass Engine)
     private FrameLayout layoutInternalPlayer;
@@ -214,11 +218,7 @@ public class MainActivity extends AppCompatActivity {
         handleIncomingIntent(getIntent());
 
         if (savedInstanceState == null) {
-            if (isNetworkAvailable()) {
-                webView.loadUrl(SITE_URL);
-            } else {
-                showOfflineScreen();
-            }
+            webView.loadUrl(APP_LOCAL_URL);
         } else {
             webView.restoreState(savedInstanceState);
         }
@@ -474,6 +474,8 @@ public class MainActivity extends AppCompatActivity {
         settings.setDatabaseEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
+        settings.setAllowFileAccessFromFileURLs(true);
+        settings.setAllowUniversalAccessFromFileURLs(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setUseWideViewPort(true);
@@ -487,10 +489,15 @@ public class MainActivity extends AppCompatActivity {
 
         // User Agent
         String defaultUA = settings.getUserAgentString();
-        settings.setUserAgentString(defaultUA + " AniRateApp/1.3");
+        settings.setUserAgentString(defaultUA + " AniRateApp/1.6.2 NativeSPA");
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+
+        // Build WebViewAssetLoader for offline local assets hosting
+        assetLoader = new WebViewAssetLoader.Builder()
+                .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+                .build();
 
         // JavaScript Interfaces
         WebAppInterface webAppInterface = new WebAppInterface();
@@ -507,6 +514,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
+
+                if (url.startsWith("https://appassets.androidplatform.net/") || url.startsWith("file:///android_asset/")) {
+                    return false;
+                }
 
                 if (url.startsWith("tg:") || url.startsWith("https://t.me/") || url.startsWith("intent:")) {
                     try {
@@ -562,6 +573,10 @@ public class MainActivity extends AppCompatActivity {
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 if (uri != null) {
+                    if (assetLoader != null) {
+                        WebResourceResponse res = assetLoader.shouldInterceptRequest(uri);
+                        if (res != null) return res;
+                    }
                     WebResourceResponse offline = getOfflineResource(uri.toString());
                     if (offline != null) {
                         return offline;
@@ -573,7 +588,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) {
-                    showOfflineScreen();
+                    if (request.getUrl() != null && request.getUrl().toString().contains("appassets")) {
+                        webView.loadUrl(SITE_URL);
+                    } else {
+                        showOfflineScreen();
+                    }
                 }
             }
         });
@@ -1097,6 +1116,128 @@ public class MainActivity extends AppCompatActivity {
         public void openOfflineDownloads() {
             runOnUiThread(MainActivity.this::showDownloadsList);
         }
+
+        @JavascriptInterface
+        public String getDownloadedFiles() {
+            try {
+                scanDownloadedAnimeFiles();
+                org.json.JSONArray arr = new org.json.JSONArray();
+                for (File f : downloadedFiles) {
+                    if (f.exists()) {
+                        org.json.JSONObject obj = new org.json.JSONObject();
+                        obj.put("name", f.getName());
+                        obj.put("path", f.getAbsolutePath());
+                        obj.put("size", formatFileSize(f.length()));
+                        obj.put("date", f.lastModified());
+                        arr.put(obj);
+                    }
+                }
+                return arr.toString();
+            } catch (Exception e) {
+                return "[]";
+            }
+        }
+
+        @JavascriptInterface
+        public boolean deleteDownloadedFile(String fileName) {
+            try {
+                File dir = getExternalFilesDir(Environment.DIRECTORY_MOVIES);
+                if (dir != null) {
+                    File target = new File(dir, fileName);
+                    if (target.exists() && target.delete()) {
+                        runOnUiThread(MainActivity.this::loadDownloadedAnimeFiles);
+                        return true;
+                    }
+                }
+                File pubDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "AniRate");
+                File pubTarget = new File(pubDir, fileName);
+                if (pubTarget.exists() && pubTarget.delete()) {
+                    runOnUiThread(MainActivity.this::loadDownloadedAnimeFiles);
+                    return true;
+                }
+            } catch (Exception ignored) {}
+            return false;
+        }
+
+        @JavascriptInterface
+        public void playDownloadedVideo(String filePath) {
+            runOnUiThread(() -> {
+                try {
+                    File videoFile = new File(filePath);
+                    if (videoFile.exists()) {
+                        playVideoInApp(videoFile);
+                    } else {
+                        Toast.makeText(MainActivity.this, "Video fayl topilmadi", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "Videoni ochishda xatolik", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void showToast(String message) {
+            runOnUiThread(() -> Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show());
+        }
+
+        @JavascriptInterface
+        public void vibrate(long ms) {
+            try {
+                android.os.Vibrator v = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                if (v != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        v.vibrate(android.os.VibrationEffect.createOneShot(ms, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+                    } else {
+                        v.vibrate(ms);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        @JavascriptInterface
+        public void openTelegram(String url) {
+            try {
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                startActivity(intent);
+            } catch (Exception e) {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/anirateuzrobot"));
+                    startActivity(intent);
+                } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    private String formatFileSize(long bytes) {
+        if (bytes <= 0) return "0 B";
+        if (bytes < 1024 * 1024) return String.format(Locale.US, "%.1f KB", bytes / 1024.0);
+        return String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0));
+    }
+
+    private void scanDownloadedAnimeFiles() {
+        downloadedFiles.clear();
+
+        File appDir = getExternalFilesDir(Environment.DIRECTORY_MOVIES);
+        if (appDir != null && appDir.exists()) {
+            File[] files = appDir.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    if (isVideoFile(f) && !downloadedFiles.contains(f)) downloadedFiles.add(f);
+                }
+            }
+        }
+
+        File publicDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "AniRate");
+        if (publicDir.exists() && publicDir.isDirectory()) {
+            File[] files = publicDir.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    if (isVideoFile(f) && !downloadedFiles.contains(f)) downloadedFiles.add(f);
+                }
+            }
+        }
+
+        Collections.sort(downloadedFiles, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
     }
 
     // In-App Downloads List
@@ -1114,31 +1255,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadDownloadedAnimeFiles() {
-        downloadedFiles.clear();
-
-        // 1. Check app private external files (Movies)
-        File appDir = getExternalFilesDir(Environment.DIRECTORY_MOVIES);
-        if (appDir != null && appDir.exists()) {
-            File[] files = appDir.listFiles();
-            if (files != null) {
-                for (File f : files) {
-                    if (isVideoFile(f) && !downloadedFiles.contains(f)) downloadedFiles.add(f);
-                }
-            }
-        }
-
-        // 2. Check public Movies/AniRate
-        File publicDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "AniRate");
-        if (publicDir.exists() && publicDir.isDirectory()) {
-            File[] files = publicDir.listFiles();
-            if (files != null) {
-                for (File f : files) {
-                    if (isVideoFile(f) && !downloadedFiles.contains(f)) downloadedFiles.add(f);
-                }
-            }
-        }
-
-        Collections.sort(downloadedFiles, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
+        scanDownloadedAnimeFiles();
 
         if (downloadedFiles.isEmpty()) {
             tvEmptyDownloads.setVisibility(View.VISIBLE);
@@ -1498,15 +1615,8 @@ public class MainActivity extends AppCompatActivity {
         swipeRefresh.setProgressBackgroundColorSchemeResource(R.color.surface);
 
         swipeRefresh.setOnRefreshListener(() -> {
-            if (isNetworkAvailable()) {
-                layoutError.setVisibility(View.GONE);
-                webView.setVisibility(View.VISIBLE);
-                btnQuickDownloadsFab.setVisibility(View.VISIBLE);
-                webView.reload();
-            } else {
-                swipeRefresh.setRefreshing(false);
-                showOfflineScreen();
-            }
+            webView.evaluateJavascript("if (typeof fetchHomeData === 'function') { fetchHomeData(); }", null);
+            webView.postDelayed(() -> swipeRefresh.setRefreshing(false), 800);
         });
 
         webView.getViewTreeObserver().addOnScrollChangedListener(() -> {
@@ -1520,25 +1630,38 @@ public class MainActivity extends AppCompatActivity {
             public void handleOnBackPressed() {
                 if (layoutInternalPlayer.getVisibility() == View.VISIBLE) {
                     closeInternalPlayer();
-                } else if (layoutDownloads.getVisibility() == View.VISIBLE) {
+                    return;
+                }
+                if (layoutDownloads.getVisibility() == View.VISIBLE) {
                     layoutDownloads.setVisibility(View.GONE);
-                    if (isNetworkAvailable()) {
-                        webView.setVisibility(View.VISIBLE);
-                        btnQuickDownloadsFab.setVisibility(View.VISIBLE);
-                    } else {
-                        layoutError.setVisibility(View.VISIBLE);
-                        btnQuickDownloadsFab.setVisibility(View.GONE);
-                    }
-                } else if (customView != null) {
+                    webView.setVisibility(View.VISIBLE);
+                    btnQuickDownloadsFab.setVisibility(View.VISIBLE);
+                    return;
+                }
+                if (customView != null) {
                     if (webView.getWebChromeClient() != null) {
                         ((WebChromeClient) webView.getWebChromeClient()).onHideCustomView();
                     }
-                } else if (webView.canGoBack()) {
-                    webView.goBack();
-                } else {
-                    setEnabled(false);
-                    getOnBackPressedDispatcher().onBackPressed();
+                    return;
                 }
+                
+                // Let SPA JS handle internal view navigation first
+                webView.evaluateJavascript("typeof window.handleNativeBackPressed === 'function' ? window.handleNativeBackPressed() : false", value -> {
+                    if ("true".equals(value)) {
+                        return;
+                    }
+                    if (webView.canGoBack()) {
+                        webView.goBack();
+                    } else {
+                        if (backPressedTime + 2000 > System.currentTimeMillis()) {
+                            setEnabled(false);
+                            getOnBackPressedDispatcher().onBackPressed();
+                        } else {
+                            Toast.makeText(MainActivity.this, "Chiqish uchun yana bir marta bosing", Toast.LENGTH_SHORT).show();
+                            backPressedTime = System.currentTimeMillis();
+                        }
+                    }
+                });
             }
         });
     }
