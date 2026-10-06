@@ -750,13 +750,16 @@
 
     <!-- Top Navigation Bar -->
     <header class="app-topbar">
-        <div class="app-brand" onclick="handleBrandTap()">
+        <div class="app-brand" onclick="navigateTo('home')">
             <img src="img/icon-192.png" alt="AniRate" class="app-brand-logo">
             <span class="app-brand-text">AniRate</span>
         </div>
         <div class="app-topbar-actions">
             <button class="icon-btn" id="topbarAdminBtn" onclick="openAdminPanel()" title="Admin Panel" style="display: none; color: #ffd700; border-color: rgba(255, 215, 0, 0.4); background: rgba(255, 215, 0, 0.15);">
                 <i class="fa-solid fa-crown"></i>
+            </button>
+            <button class="icon-btn" id="topbarUserBtn" onclick="handleTopbarUserClick()" title="Profil">
+                <i class="fa-solid fa-circle-user" id="topbarUserIcon"></i>
             </button>
             <button class="icon-btn" onclick="navigateTo('search')" title="Qidiruv">
                 <i class="fa-solid fa-magnifying-glass"></i>
@@ -935,10 +938,67 @@
 
     <!-- ==================== VIEW 6: SETTINGS ==================== -->
     <section class="app-view" id="view-settings">
-        <div style="padding: 24px 16px; text-align: center;">
-            <img src="img/icon-192.png" alt="AniRate" style="width: 72px; height: 72px; border-radius: 20px; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.4);">
-            <h2 style="margin: 10px 0 2px; font-size: 20px;">AniRate TV Mobile</h2>
-            <div style="font-size: 12px; color: #8E8E93;">Versiya: 1.6.2 (Native Pro)</div>
+        <!-- Profile Account Card -->
+        <div style="padding: 16px 16px 4px;">
+            <!-- Guest state -->
+            <div id="settingsProfileGuest" onclick="openLoginModal()" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 14px 16px; cursor: pointer;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 20px; color: #8E8E93;">
+                        <i class="fa-solid fa-circle-user"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 700; font-size: 15px; color: #ffffff;">Profilga kirish</div>
+                        <div style="font-size: 12px; color: #8E8E93;">Akkauntingiz orqali tizimga kiring</div>
+                    </div>
+                </div>
+                <button style="background: #E50914; color: white; border: none; border-radius: 20px; padding: 7px 16px; font-size: 12px; font-weight: 700; cursor: pointer;">Kirish</button>
+            </div>
+
+            <!-- Normal User state -->
+            <div id="settingsProfileUser" style="display: none; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 14px 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div id="settingsUserAvatarWrap" style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #E50914, #ff5e62); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #ffffff; overflow: hidden;">
+                        <span id="settingsUserInitial">U</span>
+                    </div>
+                    <div>
+                        <div id="settingsUserDisplayName" style="font-weight: 700; font-size: 15px; color: #ffffff;">Foydalanuvchi</div>
+                        <div id="settingsUserHandle" style="font-size: 12px; color: #8E8E93;">@user</div>
+                    </div>
+                </div>
+                <button onclick="logoutAccount()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #FF453A; border-radius: 12px; padding: 7px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-right-from-bracket"></i> Chiqish
+                </button>
+            </div>
+
+            <!-- Admin User state -->
+            <div id="settingsProfileAdmin" style="display: none; align-items: center; justify-content: space-between; background: rgba(255, 215, 0, 0.08); border: 1px solid rgba(255, 215, 0, 0.35); border-radius: 16px; padding: 14px 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #FFD700, #FFA500); display: flex; align-items: center; justify-content: center; font-size: 20px; color: #000; box-shadow: 0 2px 10px rgba(255,215,0,0.35);">
+                        <i class="fa-solid fa-crown"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 800; font-size: 15px; color: #FFD700; display: flex; align-items: center; gap: 6px;">
+                            <span id="settingsAdminDisplayName">Administrator</span>
+                            <span style="background: rgba(255,215,0,0.2); color: #FFD700; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 6px;">ADMIN</span>
+                        </div>
+                        <div id="settingsAdminHandle" style="font-size: 12px; color: #a3a3a3;">@admin</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <button onclick="openAdminPanel()" style="background: linear-gradient(135deg, #FFD700, #FFA500); border: none; color: #000; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                        <i class="fa-solid fa-screwdriver-wrench"></i> Panel
+                    </button>
+                    <button onclick="logoutAccount()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #FF453A; border-radius: 12px; padding: 8px 10px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div style="padding: 18px 16px; text-align: center;">
+            <img src="img/icon-192.png" alt="AniRate" style="width: 64px; height: 64px; border-radius: 18px; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.4);">
+            <h2 style="margin: 10px 0 2px; font-size: 18px;">AniRate TV Mobile</h2>
+            <div style="font-size: 12px; color: #8E8E93;">Versiya: 1.7.3 (Native Pro)</div>
         </div>
 
         <div style="padding: 0 16px; display: flex; flex-direction: column; gap: 10px;">
@@ -966,30 +1026,30 @@
         </div>
     </section>
 
-    <!-- ==================== ADMIN LOGIN MODAL ==================== -->
-    <div id="adminLoginModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); z-index: 3000; align-items: center; justify-content: center; padding: 20px;">
-        <div style="background: #18181c; border: 1px solid rgba(255,215,0,0.3); border-radius: 20px; width: 100%; max-width: 360px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
+    <!-- ==================== PROFILE / ACCOUNT LOGIN MODAL ==================== -->
+    <div id="profileLoginModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); z-index: 3000; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #18181c; border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; width: 100%; max-width: 360px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
             <div style="text-align: center; margin-bottom: 20px;">
-                <div style="width: 54px; height: 54px; border-radius: 16px; background: rgba(255, 215, 0, 0.15); color: #FFD700; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 10px;">
-                    <i class="fa-solid fa-crown"></i>
+                <div style="width: 54px; height: 54px; border-radius: 16px; background: rgba(229, 9, 20, 0.15); color: #E50914; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 10px;">
+                    <i class="fa-solid fa-circle-user"></i>
                 </div>
-                <h3 style="margin: 0; font-size: 18px; color: #ffffff;">Admin tizimiga kirish</h3>
-                <p style="margin: 4px 0 0; font-size: 12px; color: #8E8E93;">Boshqaruv huquqini faollashtirish uchun parolni kiriting</p>
+                <h3 style="margin: 0; font-size: 18px; color: #ffffff;">Profilga kirish</h3>
+                <p style="margin: 4px 0 0; font-size: 12px; color: #8E8E93;">AniRate akkauntingiz ma'lumotlarini kiriting</p>
             </div>
-            <form onsubmit="handleAdminLoginSubmit(event)" style="display: flex; flex-direction: column; gap: 14px;">
+            <form onsubmit="handleAccountLoginSubmit(event)" style="display: flex; flex-direction: column; gap: 14px;">
                 <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <label style="font-size: 11px; font-weight: 700; color: #a3a3a3; text-transform: uppercase;">Login</label>
-                    <input type="text" id="adminLoginInput" placeholder="admin" value="admin" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; height: 42px; padding: 0 14px; color: #fff; font-size: 14px; outline: none;">
+                    <label style="font-size: 11px; font-weight: 700; color: #a3a3a3; text-transform: uppercase;">Login yoki Email</label>
+                    <input type="text" id="accountLoginInput" placeholder="Login yoki email" required style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; height: 42px; padding: 0 14px; color: #fff; font-size: 14px; outline: none;">
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                     <label style="font-size: 11px; font-weight: 700; color: #a3a3a3; text-transform: uppercase;">Parol</label>
-                    <input type="password" id="adminPasswordInput" placeholder="Admin parolini kiriting" required style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; height: 42px; padding: 0 14px; color: #fff; font-size: 14px; outline: none;">
+                    <input type="password" id="accountPasswordInput" placeholder="Parolni kiriting" required style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; height: 42px; padding: 0 14px; color: #fff; font-size: 14px; outline: none;">
                 </div>
-                <div id="adminLoginError" style="display: none; color: #FF3B30; font-size: 12px; text-align: center;"></div>
-                <button type="submit" id="btnAdminSubmit" style="height: 44px; background: linear-gradient(135deg, #FFD700, #FFA500); color: #000; font-weight: 800; font-size: 14px; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px;">
-                    <i class="fa-solid fa-lock-open"></i> Kirish
+                <div id="accountLoginError" style="display: none; color: #FF3B30; font-size: 12px; text-align: center;"></div>
+                <button type="submit" id="btnAccountLoginSubmit" style="height: 44px; background: #E50914; color: #fff; font-weight: 700; font-size: 14px; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px;">
+                    <i class="fa-solid fa-right-to-bracket"></i> Kirish
                 </button>
-                <button type="button" onclick="closeAdminModal()" style="height: 40px; background: transparent; border: 1px solid rgba(255,255,255,0.12); color: #a3a3a3; font-weight: 600; font-size: 13px; border-radius: 12px; cursor: pointer;">
+                <button type="button" onclick="closeLoginModal()" style="height: 40px; background: transparent; border: 1px solid rgba(255,255,255,0.12); color: #a3a3a3; font-weight: 600; font-size: 13px; border-radius: 12px; cursor: pointer;">
                     Bekor qilish
                 </button>
             </form>
