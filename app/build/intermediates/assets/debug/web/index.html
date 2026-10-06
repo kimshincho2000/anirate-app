@@ -3,10 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=no, viewport-fit=cover">
-    <title>AniRate Mobile</title>
+    <title>AniRate — Eng sara animelar, premyeralar va filmlar o'zbek tilida</title>
 
-    <!-- Font Awesome 6.5.1 Icons (Local Offline) -->
+    <!-- Google Fonts (Exact Website Fonts: Baloo 2 + Poppins) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome 6.5.1 Icons (Local Offline + Global CDN) -->
     <link rel="stylesheet" href="vendor/fontawesome/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- Swiper 11 Carousel CSS (Local Offline) -->
     <link rel="stylesheet" href="vendor/swiper/swiper-bundle.min.css">
@@ -14,1017 +20,545 @@
     <!-- Plyr Player CSS (Local Offline) -->
     <link rel="stylesheet" href="vendor/plyr/plyr.css">
 
-    <!-- App Stylesheets (Local Offline) -->
+    <!-- Authentic Website Stylesheets -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/player.css">
 
     <style>
         :root {
             --app-nav-height: 64px;
-            --app-header-height: 58px;
             --safe-bottom: env(safe-area-inset-bottom, 0px);
             --safe-top: env(safe-area-inset-top, 0px);
         }
-
         body {
-            background-color: #0b0d13;
-            color: #ffffff;
+            background-color: var(--bg-body, #141414);
+            color: var(--text-main, #ffffff);
+            font-family: var(--font-main, 'Poppins', sans-serif);
             margin: 0;
             padding: 0;
             padding-bottom: calc(var(--app-nav-height) + var(--safe-bottom) + 10px);
-            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
             -webkit-user-select: none;
         }
 
-        /* Ambient glowing orbs */
-        .ambient-mesh {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
+        /* SPA Router View toggles */
+        .app-view {
+            display: none;
         }
-        .ambient-mesh::before {
-            content: '';
-            position: absolute;
-            top: -100px;
-            right: -80px;
-            width: 320px;
-            height: 320px;
-            background: radial-gradient(circle, rgba(229, 9, 20, 0.15) 0%, transparent 70%);
-            filter: blur(50px);
+        .app-view.active {
+            display: block;
+            animation: appViewFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .ambient-mesh::after {
-            content: '';
-            position: absolute;
-            bottom: 120px;
-            left: -80px;
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
-            filter: blur(50px);
+        @keyframes appViewFadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Top Bar */
-        .app-topbar {
+        /* Mobile Bottom Nav Fix */
+        .mobile-bottom-nav {
+            display: flex !important;
+            z-index: 1000 !important;
+        }
+
+        /* TopBar adjustments for mobile app */
+        .animedia-topbar {
             position: sticky;
             top: 0;
-            z-index: 100;
-            height: var(--app-header-height);
+            z-index: 900;
             padding: 0 16px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: rgba(11, 13, 19, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+            height: 64px;
+            background: rgba(16, 16, 16, 0.95);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
         }
-        .app-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-            cursor: pointer;
-        }
-        .app-brand-logo {
-            width: 34px;
-            height: 34px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(229, 9, 20, 0.4);
-            object-fit: cover;
-        }
-        .app-brand-text {
-            font-size: 20px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            background: linear-gradient(135deg, #ffffff 40%, #E50914 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .app-topbar-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .icon-btn {
-            position: relative;
+
+        .topbar-btn {
             width: 38px;
             height: 38px;
-            border-radius: 12px;
+            border-radius: var(--radius-sm, 10px);
+            border: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.07);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #ffffff;
             font-size: 15px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: var(--transition);
         }
-        .icon-btn:active {
-            transform: scale(0.92);
+        .topbar-btn:active {
+            transform: scale(0.94);
             background: rgba(229, 9, 20, 0.2);
-            border-color: rgba(229, 9, 20, 0.4);
+            border-color: rgba(229, 9, 20, 0.5);
         }
+
         .badge-count {
             position: absolute;
-            top: -3px;
-            right: -3px;
+            top: -4px;
+            right: -4px;
             background: #E50914;
             color: #ffffff;
             font-size: 10px;
             font-weight: 800;
             padding: 1px 5px;
             border-radius: 10px;
-            border: 2px solid #0b0d13;
+            border: 2px solid #141414;
             min-width: 14px;
             text-align: center;
             display: none;
         }
 
-        /* Bottom Tab Navigation Bar */
-        .app-bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: calc(var(--app-nav-height) + var(--safe-bottom));
-            padding-bottom: var(--safe-bottom);
-            background: rgba(15, 17, 24, 0.92);
-            backdrop-filter: blur(25px) saturate(180%);
-            -webkit-backdrop-filter: blur(25px) saturate(180%);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: space-around;
-            z-index: 1000;
-            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.5);
-        }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex: 1;
-            height: 100%;
-            color: #8E8E93;
-            cursor: pointer;
-            font-size: 10px;
-            font-weight: 600;
-            gap: 4px;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-        .nav-item i {
-            font-size: 19px;
-            transition: transform 0.2s ease, color 0.2s ease;
-        }
-        .nav-item.active {
-            color: #ffffff;
-        }
-        .nav-item.active i {
-            color: #E50914;
-            transform: translateY(-2px) scale(1.1);
-            filter: drop-shadow(0 2px 8px rgba(229, 9, 20, 0.5));
-        }
-
-        /* Views Router */
-        .app-view {
-            display: none;
-            position: relative;
-            z-index: 1;
-            animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .app-view.active {
-            display: block;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Offline Banner */
-        .offline-status-bar {
-            display: none;
-            background: linear-gradient(90deg, #b81d24, #E50914);
-            color: white;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 8px 16px;
-            text-align: center;
-            position: sticky;
-            top: var(--app-header-height);
-            z-index: 99;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
-
-        /* Hero Carousel Slider */
-        .hero-swiper {
-            width: 100%;
-            height: 240px;
-            margin-top: 10px;
-        }
-        .hero-slide-card {
-            position: relative;
-            width: 90%;
-            margin: 0 auto;
-            height: 100%;
-            border-radius: 18px;
-            overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            cursor: pointer;
-        }
-        .hero-slide-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .hero-slide-overlay {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(11,13,19,0.95) 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            padding: 16px;
-        }
-        .hero-slide-badge {
-            align-self: flex-start;
-            background: rgba(229, 9, 20, 0.9);
-            color: #ffffff;
-            font-size: 10px;
-            font-weight: 800;
-            padding: 4px 8px;
-            border-radius: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px;
-        }
-        .hero-slide-title {
-            font-size: 17px;
-            font-weight: 700;
-            line-height: 1.25;
-            margin-bottom: 4px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .hero-slide-meta {
-            font-size: 12px;
-            color: #a3a3a3;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        /* Horizontal Category Chips */
-        .category-scroll {
-            display: flex;
-            gap: 8px;
-            padding: 14px 16px;
-            overflow-x: auto;
-            scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
-        }
-        .category-scroll::-webkit-scrollbar {
-            display: none;
-        }
-        .category-chip {
-            flex-shrink: 0;
-            padding: 8px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            background: rgba(255, 255, 255, 0.06);
-            color: #a3a3a3;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .category-chip.active {
-            background: #E50914;
-            color: #ffffff;
-            border-color: #E50914;
-            box-shadow: 0 4px 12px rgba(229, 9, 20, 0.4);
-        }
-
-        /* Section Header */
-        .section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 16px 10px;
-        }
-        .section-title {
-            font-size: 17px;
-            font-weight: 800;
-            letter-spacing: -0.3px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .section-title i {
-            color: #E50914;
-            font-size: 15px;
-        }
-        .section-link {
-            font-size: 12px;
-            font-weight: 600;
-            color: #E50914;
-            cursor: pointer;
-        }
-
-        /* Responsive Anime Grid */
-        .anime-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            padding: 0 16px;
-        }
-        @media (min-width: 500px) {
-            .anime-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; }
-        }
-        @media (min-width: 768px) {
-            .anime-grid { grid-template-columns: repeat(5, 1fr); gap: 16px; }
-        }
-
-        .anime-card {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            flex-direction: column;
-        }
-        .anime-card:active {
-            transform: scale(0.96);
-        }
-        .anime-poster-box {
-            position: relative;
-            aspect-ratio: 2 / 3;
-            background: #141720;
-            overflow: hidden;
-        }
-        .anime-poster-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: opacity 0.3s;
-        }
-        .anime-card-badge {
-            position: absolute;
-            top: 6px;
-            left: 6px;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(6px);
-            color: #ffd700;
-            font-size: 10px;
-            font-weight: 800;
-            padding: 2px 6px;
-            border-radius: 6px;
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            display: flex;
-            align-items: center;
-            gap: 3px;
-        }
-        .anime-ep-badge {
-            position: absolute;
-            bottom: 6px;
-            right: 6px;
-            background: rgba(229, 9, 20, 0.9);
-            color: #ffffff;
-            font-size: 9px;
-            font-weight: 700;
-            padding: 2px 5px;
-            border-radius: 4px;
-        }
-        .anime-info-box {
-            padding: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            flex-grow: 1;
-        }
-        .anime-title {
-            font-size: 12px;
-            font-weight: 700;
-            line-height: 1.3;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            color: #ffffff;
-        }
-        .anime-year {
-            font-size: 10px;
-            color: #8E8E93;
-            margin-top: auto;
-        }
-
-        /* Detail View */
-        .detail-hero {
-            position: relative;
-            width: 100%;
-            height: 280px;
-            overflow: hidden;
-        }
-        .detail-backdrop-blur {
-            position: absolute;
-            inset: -20px;
-            background-size: cover;
-            background-position: center;
-            filter: blur(25px) brightness(0.4);
-            transform: scale(1.1);
-        }
-        .detail-hero-content {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(180deg, rgba(11, 13, 19, 0.4) 0%, #0b0d13 100%);
-            display: flex;
-            align-items: flex-end;
-            padding: 16px;
-            gap: 16px;
-        }
-        .detail-poster {
-            width: 105px;
-            aspect-ratio: 2 / 3;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
-            border: 2px solid rgba(255, 255, 255, 0.15);
-            flex-shrink: 0;
-        }
-        .detail-poster img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .detail-meta-box {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        .detail-title {
-            font-size: 18px;
-            font-weight: 800;
-            line-height: 1.2;
-            margin: 0;
-        }
-        .detail-genres {
-            font-size: 11px;
-            color: #E50914;
-            font-weight: 600;
-        }
-        .detail-stats {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 11px;
-            color: #a3a3a3;
-            margin-top: 4px;
-        }
-
-        .detail-nav-back {
-            position: absolute;
-            top: 14px;
-            left: 16px;
-            z-index: 10;
-        }
-
-        /* Action Buttons */
-        .action-btn-row {
-            display: flex;
-            gap: 10px;
-            padding: 16px;
-        }
-        .btn-play-primary {
-            flex: 1;
-            height: 44px;
-            background: #E50914;
-            color: white;
-            border-radius: 12px;
-            border: none;
-            font-size: 14px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
-        }
-        .btn-play-primary:active {
-            transform: scale(0.97);
-        }
-        .btn-download-secondary {
-            height: 44px;
-            padding: 0 16px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: white;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-
-        /* Episode List Cards */
-        .episodes-container {
-            padding: 0 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .episode-card-item {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 10px 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-        }
-        .episode-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex: 1;
-        }
-        .episode-num-badge {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            background: rgba(229, 9, 20, 0.15);
-            border: 1px solid rgba(229, 9, 20, 0.4);
-            color: #E50914;
-            font-size: 13px;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        .episode-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: #ffffff;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .episode-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .btn-ep-play {
-            width: 34px;
-            height: 34px;
-            border-radius: 10px;
-            background: #E50914;
-            color: white;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            cursor: pointer;
-        }
-        .btn-ep-download {
-            width: 34px;
-            height: 34px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
-        /* Player Box */
+        /* Fullscreen Player Modal */
         .player-modal-box {
-            display: none;
             position: fixed;
             inset: 0;
-            background: #000000;
-            z-index: 2000;
+            z-index: 2500;
+            background: #000;
+            display: none;
             flex-direction: column;
         }
         .player-modal-top {
-            height: 50px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 16px;
+            padding: 10px 16px;
             background: rgba(0, 0, 0, 0.85);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* Search View */
-        .search-bar-wrap {
-            padding: 12px 16px;
-            position: sticky;
-            top: var(--app-header-height);
-            background: rgba(11, 13, 19, 0.95);
-            backdrop-filter: blur(15px);
-            z-index: 50;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        .search-input-box {
-            display: flex;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.07);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 12px;
-            padding: 0 14px;
-            height: 44px;
-            gap: 10px;
-        }
-        .search-input-box input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: #ffffff;
-            font-size: 14px;
-            outline: none;
+        /* Offline bar */
+        .offline-status-bar {
+            background: #ff9900;
+            color: #000;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 6px 16px;
+            text-align: center;
+            display: none;
         }
 
-        /* Downloads View */
-        .downloads-list {
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
         .download-item-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
             border-radius: 14px;
             padding: 12px 14px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .download-item-card:active {
+            transform: scale(0.98);
         }
         .download-item-left {
             display: flex;
             align-items: center;
             gap: 12px;
-            flex: 1;
             min-width: 0;
+            flex: 1;
         }
         .download-item-icon {
             width: 40px;
             height: 40px;
             border-radius: 10px;
-            background: rgba(229, 9, 20, 0.15);
-            color: #E50914;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-size: 18px;
             flex-shrink: 0;
         }
         .download-item-name {
-            font-size: 13px;
-            font-weight: 700;
+            font-size: 13.5px;
+            font-weight: 600;
+            color: #ffffff;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            color: #ffffff;
         }
         .download-item-size {
-            font-size: 11px;
-            color: #8E8E93;
+            font-size: 11.5px;
+            color: var(--text-muted);
             margin-top: 2px;
-        }
-
-        /* Skeleton Shimmer Loading */
-        .skeleton {
-            background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-        }
-        @keyframes shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #8E8E93;
-        }
-        .empty-state i {
-            font-size: 42px;
-            color: rgba(255, 255, 255, 0.15);
-            margin-bottom: 12px;
         }
     </style>
 </head>
 <body>
 
-    <!-- Ambient Glow Mesh -->
-    <div class="ambient-mesh"></div>
+    <!-- Ambient Cinema Glow Mesh (Deep Atmospheric Transparency) -->
+    <div class="cinema-ambient-orbs" aria-hidden="true"></div>
 
-    <!-- Top Navigation Bar -->
-    <header class="app-topbar">
-        <div class="app-brand" onclick="navigateTo('home')">
-            <img src="img/icon-192.png" alt="AniRate" class="app-brand-logo">
-            <span class="app-brand-text">AniRate</span>
-        </div>
-        <div class="app-topbar-actions">
-            <button class="icon-btn" id="topbarAdminBtn" onclick="openAdminPanel()" title="Admin Panel" style="display: none; color: #ffd700; border-color: rgba(255, 215, 0, 0.4); background: rgba(255, 215, 0, 0.15);">
-                <i class="fa-solid fa-crown"></i>
-            </button>
-            <button class="icon-btn" id="topbarUserBtn" onclick="handleTopbarUserClick()" title="Profil">
-                <i class="fa-solid fa-circle-user" id="topbarUserIcon"></i>
-            </button>
-            <button class="icon-btn" onclick="navigateTo('search')" title="Qidiruv">
-                <i class="fa-solid fa-magnifying-glass"></i>
-            </button>
-            <button class="icon-btn" onclick="navigateTo('downloads')" title="Yuklab olinganlar">
-                <i class="fa-solid fa-download"></i>
-                <span class="badge-count" id="headerDownloadsBadge">0</span>
-            </button>
-        </div>
-    </header>
-
-    <!-- Offline Status Bar -->
-    <div class="offline-status-bar" id="offlineBar">
-        <i class="fa-solid fa-wifi-slash"></i> Oflayn rejim — saqlangan ma'lumotlar ko'rsatilmoqda
-    </div>
-
-    <!-- ==================== VIEW 1: HOME ==================== -->
-    <main class="app-view active" id="view-home">
-        <!-- Hero Featured Swiper -->
-        <div class="swiper hero-swiper" id="heroSwiper">
-            <div class="swiper-wrapper" id="heroSwiperWrapper">
-                <!-- Skeletons will appear here -->
-                <div class="swiper-slide hero-slide-card skeleton"></div>
-            </div>
-        </div>
-
-        <!-- Quick Genre Categories -->
-        <div class="category-scroll" id="homeGenreScroll">
-            <div class="category-chip active" onclick="filterByGenre('')">Barchasi</div>
-        </div>
-
-        <!-- Latest Anime Grid Section -->
-        <div class="section-header">
-            <div class="section-title">
-                <i class="fa-solid fa-sparkles"></i> Yangi Qismlar
-            </div>
-            <div class="section-link" onclick="navigateTo('catalog')">
-                Barchasi <i class="fa-solid fa-chevron-right"></i>
-            </div>
-        </div>
-        <div class="anime-grid" id="homeLatestGrid">
-            <!-- Populated via JS -->
-        </div>
-
-        <!-- Top Rated Section -->
-        <div class="section-header" style="margin-top: 10px;">
-            <div class="section-title">
-                <i class="fa-solid fa-fire"></i> Top Reyting
-            </div>
-        </div>
-        <div class="anime-grid" id="homeTopGrid">
-            <!-- Populated via JS -->
-        </div>
-    </main>
-
-    <!-- ==================== VIEW 2: CATALOG ==================== -->
-    <section class="app-view" id="view-catalog">
-        <div class="search-bar-wrap" style="display: flex; gap: 8px;">
-            <select id="catalogTypeSelect" class="icon-btn" style="width: auto; padding: 0 10px; font-size: 12px; font-weight: 700; background: #181818;" onchange="loadCatalog(1)">
-                <option value="">Barchasi</option>
-                <option value="anime">Anime</option>
-                <option value="movie">Kino</option>
-                <option value="series">Serial</option>
-            </select>
-            <select id="catalogSortSelect" class="icon-btn" style="width: auto; padding: 0 10px; font-size: 12px; font-weight: 700; background: #181818;" onchange="loadCatalog(1)">
-                <option value="latest">Yangi</option>
-                <option value="rating">Reyting</option>
-                <option value="views">Ko'rishlar</option>
-            </select>
-        </div>
-        <div class="anime-grid" id="catalogGrid" style="margin-top: 14px;">
-            <!-- Populated via JS -->
-        </div>
-        <div style="text-align: center; padding: 20px;" id="catalogLoadMoreBox">
-            <button class="btn-play-primary" style="margin: 0 auto; max-width: 200px;" onclick="loadMoreCatalog()">
-                Yana ko'rsatish
-            </button>
-        </div>
-    </section>
-
-    <!-- ==================== VIEW 3: DETAIL ==================== -->
-    <section class="app-view" id="view-detail">
-        <div class="detail-hero">
-            <div class="detail-backdrop-blur" id="detailBackdrop"></div>
-            <button class="icon-btn detail-nav-back" onclick="navigateBack()">
-                <i class="fa-solid fa-chevron-left"></i>
-            </button>
-            <div class="detail-hero-content">
-                <div class="detail-poster">
-                    <img id="detailPosterImg" src="" alt="Poster">
-                </div>
-                <div class="detail-meta-box">
-                    <h1 class="detail-title" id="detailTitle">--</h1>
-                    <div class="detail-genres" id="detailGenres">--</div>
-                    <div class="detail-stats">
-                        <span id="detailYear">--</span> • 
-                        <span id="detailStatus" style="color: #46d369;">--</span> • 
-                        <span style="color: #ffd700;"><i class="fa-solid fa-star"></i> <span id="detailRating">--</span></span>
+    <div class="animedia-app">
+        <!-- ==================== ANIMEDIA TOPBAR (EXACT SITE DESIGN) ==================== -->
+        <header class="animedia-topbar">
+            <!-- Left: Logo Symbol & Brand -->
+            <div class="topbar-left" style="display: flex; align-items: center; gap: 12px;">
+                <a href="#" class="animedia-logo" onclick="navigateTo('home'); return false;">
+                    <div class="logo-symbol" style="box-shadow: 0 0 16px rgba(229, 9, 20, 0.6); border: 1.5px solid rgba(255,255,255,0.18); background: #0c0e14;">
+                        <img src="img/logo.jpg" alt="AniRate">
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="action-btn-row">
-            <button class="btn-play-primary" id="btnPlayFirst">
-                <i class="fa-solid fa-play"></i> 1-qismni ko'rish
-            </button>
-            <button class="btn-download-secondary" id="btnDownloadFirst">
-                <i class="fa-solid fa-download"></i> Yuklab olish
-            </button>
-        </div>
-
-        <!-- Description -->
-        <div style="padding: 0 16px 14px;">
-            <p id="detailDescription" style="font-size: 13px; color: #a3a3a3; line-height: 1.5; margin: 0;"></p>
-        </div>
-
-        <!-- Episodes List -->
-        <div class="section-header">
-            <div class="section-title">
-                <i class="fa-solid fa-list-ol"></i> Qismlar (<span id="detailEpCount">0</span>)
-            </div>
-        </div>
-        <div class="episodes-container" id="detailEpisodesList">
-            <!-- Populated via JS -->
-        </div>
-
-        <!-- Similar Anime -->
-        <div class="section-header" style="margin-top: 20px;">
-            <div class="section-title">
-                <i class="fa-solid fa-clone"></i> O'xshash Animelar
-            </div>
-        </div>
-        <div class="anime-grid" id="detailSimilarGrid" style="margin-bottom: 20px;">
-            <!-- Populated via JS -->
-        </div>
-    </section>
-
-    <!-- ==================== VIEW 4: SEARCH ==================== -->
-    <section class="app-view" id="view-search">
-        <div class="search-bar-wrap">
-            <div class="search-input-box">
-                <i class="fa-solid fa-magnifying-glass" style="color: #8E8E93;"></i>
-                <input type="text" id="liveSearchInput" placeholder="Anime nomini yozing..." autocomplete="off">
-                <i class="fa-solid fa-circle-xmark" id="btnSearchClear" style="color: #8E8E93; cursor: pointer; display: none;" onclick="clearSearch()"></i>
-            </div>
-        </div>
-        <div class="anime-grid" id="searchResultsGrid" style="margin-top: 14px;">
-            <!-- Results populated via JS -->
-        </div>
-        <div class="empty-state" id="searchEmptyState">
-            <i class="fa-solid fa-tv"></i>
-            <div>Istalgan animeni qidiring</div>
-        </div>
-    </section>
-
-    <!-- ==================== VIEW 5: DOWNLOADS ==================== -->
-    <section class="app-view" id="view-downloads">
-        <div class="section-header">
-            <div class="section-title">
-                <i class="fa-solid fa-circle-down"></i> Telefoningizdagi Videolar
-            </div>
-            <button class="icon-btn" onclick="refreshDownloadedFiles()" title="Yangilash">
-                <i class="fa-solid fa-arrows-rotate"></i>
-            </button>
-        </div>
-        <div class="downloads-list" id="downloadsListContainer">
-            <!-- Populated via JS -->
-        </div>
-        <div class="empty-state" id="downloadsEmptyState">
-            <i class="fa-solid fa-download"></i>
-            <div style="font-weight: 700; color: #ffffff; margin-bottom: 6px;">Hozircha yuklab olingan anime yo'q</div>
-            <div style="font-size: 12px;">Sevimli animelaringizni internetsiz tomosha qilish uchun yuklab oling!</div>
-        </div>
-    </section>
-
-    <!-- ==================== VIEW 6: SETTINGS ==================== -->
-    <section class="app-view" id="view-settings">
-        <!-- Profile Account Card -->
-        <div style="padding: 16px 16px 4px;">
-            <!-- Guest state -->
-            <div id="settingsProfileGuest" onclick="openLoginModal()" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 14px 16px; cursor: pointer;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 20px; color: #8E8E93;">
-                        <i class="fa-solid fa-circle-user"></i>
+                    <div class="logo-brand" style="font-family:'Poppins', sans-serif; letter-spacing:1px; font-weight:900;">
+                        ANIRATE<span style="color:#E50914; font-weight:900;">UZ</span>
                     </div>
-                    <div>
-                        <div style="font-weight: 700; font-size: 15px; color: #ffffff;">Profilga kirish</div>
-                        <div style="font-size: 12px; color: #8E8E93;">Akkauntingiz orqali tizimga kiring</div>
-                    </div>
-                </div>
-                <button style="background: #E50914; color: white; border: none; border-radius: 20px; padding: 7px 16px; font-size: 12px; font-weight: 700; cursor: pointer;">Kirish</button>
+                </a>
             </div>
 
-            <!-- Normal User state -->
-            <div id="settingsProfileUser" style="display: none; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 14px 16px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div id="settingsUserAvatarWrap" style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #E50914, #ff5e62); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #ffffff; overflow: hidden;">
-                        <span id="settingsUserInitial">U</span>
-                    </div>
-                    <div>
-                        <div id="settingsUserDisplayName" style="font-weight: 700; font-size: 15px; color: #ffffff;">Foydalanuvchi</div>
-                        <div id="settingsUserHandle" style="font-size: 12px; color: #8E8E93;">@user</div>
-                    </div>
-                </div>
-                <button onclick="logoutAccount()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #FF453A; border-radius: 12px; padding: 7px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                    <i class="fa-solid fa-right-from-bracket"></i> Chiqish
+            <!-- Right: Search, Downloads, Profile, Admin Badge -->
+            <div class="topbar-right" style="display: flex; align-items: center; gap: 8px;">
+                <!-- Admin Badge (Visible ONLY when admin logged in) -->
+                <a href="#" onclick="openAdminPanel(); return false;" class="topbar-admin-badge" id="topbarAdminBtn" style="display: none;" title="Admin Panel">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span class="topbar-admin-text">Admin</span>
+                </a>
+
+                <!-- User / Profile Button -->
+                <a href="#" onclick="handleTopbarUserClick(); return false;" class="btn-animedia-primary" id="topbarUserBtn" style="padding:6px 12px;font-size:12px;border-radius:18px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                    <i class="fa-solid fa-circle-user" id="topbarUserIcon"></i>
+                    <span id="topbarUserText">Profil</span>
+                </a>
+
+                <!-- Search Button -->
+                <button type="button" class="topbar-btn" onclick="navigateTo('search')" title="Qidiruv">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+
+                <!-- Downloads Button -->
+                <button type="button" class="topbar-btn" onclick="navigateTo('downloads')" title="Yuklamalar" style="position: relative;">
+                    <i class="fa-solid fa-download"></i>
+                    <span class="badge-count" id="headerDownloadsBadge">0</span>
                 </button>
             </div>
+        </header>
 
-            <!-- Admin User state -->
-            <div id="settingsProfileAdmin" style="display: none; align-items: center; justify-content: space-between; background: rgba(255, 215, 0, 0.08); border: 1px solid rgba(255, 215, 0, 0.35); border-radius: 16px; padding: 14px 16px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #FFD700, #FFA500); display: flex; align-items: center; justify-content: center; font-size: 20px; color: #000; box-shadow: 0 2px 10px rgba(255,215,0,0.35);">
-                        <i class="fa-solid fa-crown"></i>
-                    </div>
-                    <div>
-                        <div style="font-weight: 800; font-size: 15px; color: #FFD700; display: flex; align-items: center; gap: 6px;">
-                            <span id="settingsAdminDisplayName">Administrator</span>
-                            <span style="background: rgba(255,215,0,0.2); color: #FFD700; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 6px;">ADMIN</span>
+        <!-- Offline Status Bar -->
+        <div class="offline-status-bar" id="offlineBar">
+            <i class="fa-solid fa-wifi-slash"></i> Oflayn rejim — saqlangan ma'lumotlar ko'rsatilmoqda
+        </div>
+
+        <!-- ==================== ANIMEDIA MAIN CONTENT ==================== -->
+        <main class="animedia-content">
+            <div class="animedia-container">
+
+                <!-- ==================== VIEW 1: HOME (EXACT SITE LAYOUT) ==================== -->
+                <section class="app-view active" id="view-home">
+                    <!-- 1. HERO SLIDER -->
+                    <section class="hero-section" aria-label="Tavsiya etilgan animelar karuseli">
+                        <div class="hero-carousel swiper hero-swiper" id="heroSwiper">
+                            <div class="swiper-wrapper" id="heroSwiperWrapper">
+                                <div class="swiper-slide hero-slide skeleton" style="min-height: 280px;"></div>
+                            </div>
+                            <button class="hero-nav-arrow hero-arrow-prev" aria-label="Oldingi"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button class="hero-nav-arrow hero-arrow-next" aria-label="Keyingi"><i class="fa-solid fa-chevron-right"></i></button>
+                            <div class="hero-pagination"></div>
                         </div>
-                        <div id="settingsAdminHandle" style="font-size: 12px; color: #a3a3a3;">@admin</div>
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <button onclick="openAdminPanel()" style="background: linear-gradient(135deg, #FFD700, #FFA500); border: none; color: #000; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                        <i class="fa-solid fa-screwdriver-wrench"></i> Panel
-                    </button>
-                    <button onclick="logoutAccount()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #FF453A; border-radius: 12px; padding: 8px 10px; font-size: 12px; font-weight: 600; cursor: pointer;">
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
+                    </section>
 
-        <div style="padding: 18px 16px; text-align: center;">
-            <img src="img/icon-192.png" alt="AniRate" style="width: 64px; height: 64px; border-radius: 18px; box-shadow: 0 4px 20px rgba(229, 9, 20, 0.4);">
-            <h2 style="margin: 10px 0 2px; font-size: 18px;">AniRate TV Mobile</h2>
-            <div style="font-size: 12px; color: #8E8E93;">Versiya: 1.7.3 (Native Pro)</div>
-        </div>
+                    <!-- 2. QUICK GENRE CLOUD -->
+                    <section class="animedia-section" style="margin-bottom: 24px;">
+                        <div class="section-head-bar">
+                            <div class="section-title-wrap">
+                                <span class="section-indicator-bar"></span>
+                                <h2 class="section-title">Janrlar</h2>
+                            </div>
+                        </div>
+                        <div class="genres-cloud-list" id="homeGenreScroll" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch;">
+                            <a class="genre-tag-pill active" onclick="filterByGenre('')">
+                                <i class="fa-solid fa-layer-group"></i> <span>Barchasi</span>
+                            </a>
+                        </div>
+                    </section>
 
-        <div style="padding: 0 16px; display: flex; flex-direction: column; gap: 10px;">
-            <div class="download-item-card" onclick="clearAppCache()">
-                <div class="download-item-left">
-                    <div class="download-item-icon" style="color: #0A84FF; background: rgba(10, 132, 255, 0.15);"><i class="fa-solid fa-broom"></i></div>
-                    <div>
-                        <div class="download-item-name">Ilova keshini tozalash</div>
-                        <div class="download-item-size">Lokal vaqtincha xotirani bo'shatadi</div>
-                    </div>
-                </div>
-                <i class="fa-solid fa-chevron-right" style="color: #8E8E93;"></i>
-            </div>
+                    <!-- 3. LATEST EPISODES / PREMYERALAR -->
+                    <section class="animedia-section" style="margin-bottom: 28px;">
+                        <div class="section-head-bar">
+                            <div class="section-title-wrap">
+                                <span class="section-indicator-bar"></span>
+                                <h2 class="section-title">Eng so'nggi premyeralar</h2>
+                            </div>
+                            <a href="#" onclick="navigateTo('catalog'); return false;" class="section-more-link" style="color: var(--primary); font-size: 13px; font-weight: 600; text-decoration: none;">
+                                Barchasi <i class="fa-solid fa-chevron-right"></i>
+                            </a>
+                        </div>
+                        <div class="anime-cards-grid" id="homeLatestGrid">
+                            <!-- Populated via JS -->
+                        </div>
+                    </section>
 
-            <div class="download-item-card" onclick="openTelegramChannel()">
-                <div class="download-item-left">
-                    <div class="download-item-icon" style="color: #2AABEE; background: rgba(42, 171, 238, 0.15);"><i class="fa-brands fa-telegram"></i></div>
-                    <div>
-                        <div class="download-item-name">Telegram kanalimiz</div>
-                        <div class="download-item-size">Eng so'nggi premyeralar va yangiliklar</div>
+                    <!-- 4. TOP RATED ANIME -->
+                    <section class="animedia-section" style="margin-bottom: 28px;">
+                        <div class="section-head-bar">
+                            <div class="section-title-wrap">
+                                <span class="section-indicator-bar"></span>
+                                <h2 class="section-title">Top 100 Reyting</h2>
+                            </div>
+                        </div>
+                        <div class="anime-cards-grid" id="homeTopGrid">
+                            <!-- Populated via JS -->
+                        </div>
+                    </section>
+                </section>
+
+                <!-- ==================== VIEW 2: CATALOG ==================== -->
+                <section class="app-view" id="view-catalog">
+                    <div class="section-head-bar" style="margin-bottom: 16px;">
+                        <div class="section-title-wrap">
+                            <span class="section-indicator-bar"></span>
+                            <h2 class="section-title">Anime Katalogi</h2>
+                        </div>
                     </div>
-                </div>
-                <i class="fa-solid fa-arrow-up-right-from-square" style="color: #8E8E93;"></i>
-            </div>
-        </div>
-    </section>
+                    <div style="display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap;">
+                        <select id="catalogTypeSelect" onchange="loadCatalog(1, false)" style="flex: 1; min-width: 130px; height: 42px; border-radius: 10px; padding: 0 12px; background: var(--bg-card); border: 1px solid var(--border-color); color: #fff; font-family: inherit;">
+                            <option value="">Barcha turlar</option>
+                            <option value="anime">Anime</option>
+                            <option value="movie">Film</option>
+                            <option value="series">Serial</option>
+                        </select>
+                        <select id="catalogSortSelect" onchange="loadCatalog(1, false)" style="flex: 1; min-width: 130px; height: 42px; border-radius: 10px; padding: 0 12px; background: var(--bg-card); border: 1px solid var(--border-color); color: #fff; font-family: inherit;">
+                            <option value="latest">Eng so'nggi</option>
+                            <option value="rating">Reyting bo'yicha</option>
+                            <option value="views">Ko'rishlar soni</option>
+                            <option value="year">Yili bo'yicha</option>
+                        </select>
+                    </div>
+                    <div class="anime-cards-grid" id="catalogGrid">
+                        <!-- Populated via JS -->
+                    </div>
+                    <div id="catalogLoadMoreBox" style="text-align: center; margin: 24px 0 36px; display: none;">
+                        <button class="btn-animedia-secondary" onclick="loadMoreCatalog()" style="padding: 12px 28px; border-radius: 12px; font-weight: 700;">
+                            <i class="fa-solid fa-arrow-down"></i> Yana yuklash
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ==================== VIEW 3: ANIME DETAIL & PLAYER (EXACT SITE DESIGN) ==================== -->
+                <section class="app-view" id="view-detail">
+                    <div style="margin-bottom: 14px;">
+                        <button class="btn-animedia-secondary" onclick="navigateBack()" style="padding: 8px 14px; border-radius: 10px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-arrow-left"></i> Orqaga
+                        </button>
+                    </div>
+
+                    <!-- THEATER HEADER TOOLBAR -->
+                    <div class="player-theater-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <div class="player-source-tabs">
+                            <span class="player-tab-btn active" id="detailEpBadge">
+                                <i class="fa-solid fa-play"></i> 1-qism
+                            </span>
+                        </div>
+                        <div class="player-actions-toolbar" style="display: flex; gap: 8px;">
+                            <button type="button" class="btn-animedia-primary" id="btnDownloadFirst" style="padding: 6px 14px; font-size: 12px; border-radius: 10px; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-download"></i> Yuklab olish
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ANIME DETAIL CARD (EXACT anime.php DESIGN) -->
+                    <div class="anime-detail-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-xl); padding: 18px; margin-bottom: 24px; position: relative; overflow: hidden;">
+                        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                            <div style="width: 110px; aspect-ratio: 2/3; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color); flex-shrink: 0; box-shadow: 0 4px 16px rgba(0,0,0,0.6);">
+                                <img id="detailPosterImg" src="img/icon-192.png" alt="Poster" style="width: 100%; height: 100%; object-fit: cover;">
+                            </div>
+                            <div style="flex: 1; min-width: 180px;">
+                                <h1 id="detailTitle" style="font-family: var(--font-title); font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px;">--</h1>
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+                                    <span class="badge-ep-pill" id="detailTypePill"><i class="fa-solid fa-tv"></i> Anime</span>
+                                    <span class="badge-ep-pill" id="detailYearPill"><i class="fa-regular fa-calendar"></i> --</span>
+                                    <span class="badge-ep-pill" id="detailRatingPill" style="color: var(--accent-gold);"><i class="fa-solid fa-star"></i> --</span>
+                                    <span class="badge-ep-pill" id="detailStatusPill" style="color: var(--accent-match);"><i class="fa-solid fa-circle-check"></i> --</span>
+                                </div>
+                                <div style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 6px;">
+                                    <strong style="color: #fff;">Janrlar:</strong> <span id="detailGenres">--</span>
+                                </div>
+                                <p id="detailDescription" style="font-size: 12.5px; color: var(--text-muted); line-height: 1.5; margin: 8px 0 0;"></p>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 16px; display: flex; gap: 10px;">
+                            <button class="btn-animedia-primary" id="btnPlayFirst" style="flex: 1; padding: 11px; border-radius: 10px; font-size: 13.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <i class="fa-solid fa-play"></i> 1-qismni ko'rish
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- EPISODES LIST -->
+                    <div class="player-episodes-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-xl); padding: 18px; margin-bottom: 24px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="section-indicator-bar" style="height: 16px;"></span>
+                                <h3 style="font-family: var(--font-title); font-size: 16px; font-weight: 700; color: #fff; margin: 0;">Barcha qismlar</h3>
+                                <span class="badge-ep-pill" id="detailEpCount" style="font-size: 11px;">0 ta</span>
+                            </div>
+                        </div>
+                        <div class="episodes-container" id="detailEpisodesList" style="display: flex; flex-direction: column; gap: 8px;">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+
+                    <!-- SIMILAR ANIME -->
+                    <div class="animedia-section">
+                        <div class="section-head-bar">
+                            <div class="section-title-wrap">
+                                <span class="section-indicator-bar"></span>
+                                <h2 class="section-title">O'xshash animelar</h2>
+                            </div>
+                        </div>
+                        <div class="anime-cards-grid" id="detailSimilarGrid" style="margin-bottom: 24px;">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==================== VIEW 4: SEARCH ==================== -->
+                <section class="app-view" id="view-search">
+                    <div class="section-head-bar" style="margin-bottom: 16px;">
+                        <div class="section-title-wrap">
+                            <span class="section-indicator-bar"></span>
+                            <h2 class="section-title">Anime Qidirish</h2>
+                        </div>
+                    </div>
+                    <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; display: flex; align-items: center; padding: 0 14px; margin-bottom: 20px;">
+                        <i class="fa-solid fa-magnifying-glass" style="color: var(--text-dim); margin-right: 10px;"></i>
+                        <input type="text" id="liveSearchInput" placeholder="Anime nomini yozing..." autocomplete="off" style="flex: 1; background: transparent; border: none; outline: none; color: #fff; height: 46px; font-size: 14px; font-family: inherit;">
+                        <i class="fa-solid fa-circle-xmark" id="btnSearchClear" style="color: var(--text-dim); cursor: pointer; display: none;" onclick="clearSearch()"></i>
+                    </div>
+                    <div class="anime-cards-grid" id="searchResultsGrid">
+                        <!-- Populated via JS -->
+                    </div>
+                    <div class="empty-state" id="searchEmptyState" style="text-align: center; padding: 60px 20px; color: var(--text-dim);">
+                        <i class="fa-solid fa-tv" style="font-size: 40px; margin-bottom: 12px; opacity: 0.5;"></i>
+                        <div>Istalgan animeni qidiring</div>
+                    </div>
+                </section>
+
+                <!-- ==================== VIEW 5: DOWNLOADS ==================== -->
+                <section class="app-view" id="view-downloads">
+                    <div class="section-head-bar" style="margin-bottom: 16px;">
+                        <div class="section-title-wrap">
+                            <span class="section-indicator-bar"></span>
+                            <h2 class="section-title">Telefoningizdagi Videolar</h2>
+                        </div>
+                        <button class="topbar-btn" onclick="refreshDownloadedFiles()" title="Yangilash">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                    </div>
+                    <div class="downloads-list" id="downloadsListContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Populated via JS -->
+                    </div>
+                    <div class="empty-state" id="downloadsEmptyState" style="text-align: center; padding: 60px 20px; color: var(--text-dim);">
+                        <i class="fa-solid fa-circle-down" style="font-size: 44px; margin-bottom: 14px; opacity: 0.5;"></i>
+                        <div style="font-weight: 700; color: #ffffff; margin-bottom: 6px;">Hozircha yuklab olingan anime yo'q</div>
+                        <div style="font-size: 12px;">Sevimli animelaringizni internetsiz tomosha qilish uchun yuklab oling!</div>
+                    </div>
+                </section>
+
+                <!-- ==================== VIEW 6: PROFIL & SOZLAMALAR ==================== -->
+                <section class="app-view" id="view-settings">
+                    <div class="section-head-bar" style="margin-bottom: 16px;">
+                        <div class="section-title-wrap">
+                            <span class="section-indicator-bar"></span>
+                            <h2 class="section-title">Akkaunt va Sozlamalar</h2>
+                        </div>
+                    </div>
+
+                    <!-- Profile Account Card -->
+                    <div style="margin-bottom: 20px;">
+                        <!-- Guest state -->
+                        <div id="settingsProfileGuest" onclick="openLoginModal()" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 14px 16px; cursor: pointer;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--text-dim);">
+                                    <i class="fa-solid fa-circle-user"></i>
+                                </div>
+                                <div>
+                                    <div style="font-weight: 700; font-size: 15px; color: #ffffff;">Profilga kirish</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">Akkauntingiz orqali tizimga kiring</div>
+                                </div>
+                            </div>
+                            <button class="btn-animedia-primary" style="padding: 7px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; border: none; cursor: pointer;">Kirish</button>
+                        </div>
+
+                        <!-- Normal User state -->
+                        <div id="settingsProfileUser" style="display: none; align-items: center; justify-content: space-between; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 14px 16px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div id="settingsUserAvatarWrap" style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #E50914, #ff5e62); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #ffffff; overflow: hidden;">
+                                    <span id="settingsUserInitial">U</span>
+                                </div>
+                                <div>
+                                    <div id="settingsUserDisplayName" style="font-weight: 700; font-size: 15px; color: #ffffff;">Foydalanuvchi</div>
+                                    <div id="settingsUserHandle" style="font-size: 12px; color: var(--text-muted);">@user</div>
+                                </div>
+                            </div>
+                            <button onclick="logoutAccount()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #FF453A; border-radius: 12px; padding: 7px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-right-from-bracket"></i> Chiqish
+                            </button>
+                        </div>
+
+                        <!-- Admin User state -->
+                        <div id="settingsProfileAdmin" style="display: none; align-items: center; justify-content: space-between; background: rgba(255, 215, 0, 0.08); border: 1px solid rgba(255, 215, 0, 0.35); border-radius: 16px; padding: 14px 16px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #FFD700, #FFA500); display: flex; align-items: center; justify-content: center; font-size: 20px; color: #000; box-shadow: 0 2px 10px rgba(255,215,0,0.35);">
+                                    <i class="fa-solid fa-crown"></i>
+                                </div>
+                                <div>
+                                    <div style="font-weight: 800; font-size: 15px; color: #FFD700; display: flex; align-items: center; gap: 6px;">
+                                        <span id="settingsAdminDisplayName">Administrator</span>
+                                        <span style="background: rgba(255,215,0,0.2); color: #FFD700; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 6px;">ADMIN</span>
+                                    </div>
+                                    <div id="settingsAdminHandle" style="font-size: 12px; color: #a3a3a3;">@admin</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <button onclick="openAdminPanel()" style="background: linear-gradient(135deg, #FFD700, #FFA500); border: none; color: #000; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                    <i class="fa-solid fa-screwdriver-wrench"></i> Panel
+                                </button>
+                                <button onclick="logoutAccount()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #FF453A; border-radius: 12px; padding: 8px 10px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                                    <i class="fa-solid fa-right-from-bracket"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- App Info & Links -->
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div class="download-item-card" onclick="clearAppCache()">
+                            <div class="download-item-left">
+                                <div class="download-item-icon" style="color: #0A84FF; background: rgba(10, 132, 255, 0.15);"><i class="fa-solid fa-broom"></i></div>
+                                <div>
+                                    <div class="download-item-name">Ilova keshini tozalash</div>
+                                    <div class="download-item-size">Lokal vaqtincha xotirani bo'shatadi</div>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right" style="color: var(--text-dim);"></i>
+                        </div>
+
+                        <div class="download-item-card" onclick="openTelegramChannel()">
+                            <div class="download-item-left">
+                                <div class="download-item-icon" style="color: #2AABEE; background: rgba(42, 171, 238, 0.15);"><i class="fa-brands fa-telegram"></i></div>
+                                <div>
+                                    <div class="download-item-name">Telegram kanalimiz</div>
+                                    <div class="download-item-size">Eng so'nggi premyeralar va yangiliklar</div>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-arrow-up-right-from-square" style="color: var(--text-dim);"></i>
+                        </div>
+                    </div>
+
+                    <div style="padding: 24px 16px; text-align: center; color: var(--text-dim); font-size: 12px;">
+                        <img src="img/logo.jpg" alt="AniRate" style="width: 48px; height: 48px; border-radius: 12px; box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4); margin-bottom: 8px;">
+                        <div style="font-weight: 700; color: #fff;">ANIRATE UZ Mobile</div>
+                        <div style="margin-top: 2px;">Versiya: 1.7.4 (Native Cinema Pro)</div>
+                    </div>
+                </section>
+
+            </div><!-- .animedia-container -->
+        </main><!-- .animedia-content -->
+    </div><!-- .animedia-app -->
 
     <!-- ==================== PROFILE / ACCOUNT LOGIN MODAL ==================== -->
     <div id="profileLoginModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); z-index: 3000; align-items: center; justify-content: center; padding: 20px;">
@@ -1034,19 +568,19 @@
                     <i class="fa-solid fa-circle-user"></i>
                 </div>
                 <h3 style="margin: 0; font-size: 18px; color: #ffffff;">Profilga kirish</h3>
-                <p style="margin: 4px 0 0; font-size: 12px; color: #8E8E93;">AniRate akkauntingiz ma'lumotlarini kiriting</p>
+                <p style="margin: 4px 0 0; font-size: 12px; color: var(--text-muted);">AniRate akkauntingiz ma'lumotlarini kiriting</p>
             </div>
             <form onsubmit="handleAccountLoginSubmit(event)" style="display: flex; flex-direction: column; gap: 14px;">
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                     <label style="font-size: 11px; font-weight: 700; color: #a3a3a3; text-transform: uppercase;">Login yoki Email</label>
-                    <input type="text" id="accountLoginInput" placeholder="Login yoki email" required style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; height: 42px; padding: 0 14px; color: #fff; font-size: 14px; outline: none;">
+                    <input type="text" id="accountLoginInput" placeholder="Login yoki email" required style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; height: 42px; padding: 0 14px; color: #fff; font-size: 14px; outline: none; font-family: inherit;">
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                     <label style="font-size: 11px; font-weight: 700; color: #a3a3a3; text-transform: uppercase;">Parol</label>
-                    <input type="password" id="accountPasswordInput" placeholder="Parolni kiriting" required style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; height: 42px; padding: 0 14px; color: #fff; font-size: 14px; outline: none;">
+                    <input type="password" id="accountPasswordInput" placeholder="Parolni kiriting" required style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; height: 42px; padding: 0 14px; color: #fff; font-size: 14px; outline: none; font-family: inherit;">
                 </div>
                 <div id="accountLoginError" style="display: none; color: #FF3B30; font-size: 12px; text-align: center;"></div>
-                <button type="submit" id="btnAccountLoginSubmit" style="height: 44px; background: #E50914; color: #fff; font-weight: 700; font-size: 14px; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px;">
+                <button type="submit" id="btnAccountLoginSubmit" class="btn-animedia-primary" style="height: 44px; font-weight: 700; font-size: 14px; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px;">
                     <i class="fa-solid fa-right-to-bracket"></i> Kirish
                 </button>
                 <button type="button" onclick="closeLoginModal()" style="height: 40px; background: transparent; border: 1px solid rgba(255,255,255,0.12); color: #a3a3a3; font-weight: 600; font-size: 13px; border-radius: 12px; cursor: pointer;">
@@ -1059,7 +593,7 @@
     <!-- ==================== FULLSCREEN PLAYER MODAL ==================== -->
     <div class="player-modal-box" id="playerModal">
         <div class="player-modal-top">
-            <button class="icon-btn" onclick="closePlayerModal()">
+            <button class="topbar-btn" onclick="closePlayerModal()">
                 <i class="fa-solid fa-xmark"></i>
             </button>
             <div id="playerModalTitle" style="font-size: 13px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%;">Pleyer</div>
@@ -1070,28 +604,28 @@
         </div>
     </div>
 
-    <!-- ==================== BOTTOM TAB BAR ==================== -->
-    <nav class="app-bottom-nav">
-        <div class="nav-item active" onclick="navigateTo('home')" id="tab-home">
+    <!-- ==================== MOBILE BOTTOM NAVIGATION BAR (EXACT SITE DESIGN) ==================== -->
+    <nav class="mobile-bottom-nav">
+        <button type="button" class="mobile-nav-item active" onclick="navigateTo('home')" id="tab-home">
             <i class="fa-solid fa-house"></i>
             <span>Asosiy</span>
-        </div>
-        <div class="nav-item" onclick="navigateTo('catalog')" id="tab-catalog">
+        </button>
+        <button type="button" class="mobile-nav-item" onclick="navigateTo('catalog')" id="tab-catalog">
             <i class="fa-solid fa-film"></i>
             <span>Katalog</span>
-        </div>
-        <div class="nav-item" onclick="navigateTo('search')" id="tab-search">
+        </button>
+        <button type="button" class="mobile-nav-item" onclick="navigateTo('search')" id="tab-search">
             <i class="fa-solid fa-magnifying-glass"></i>
             <span>Qidiruv</span>
-        </div>
-        <div class="nav-item" onclick="navigateTo('downloads')" id="tab-downloads">
-            <i class="fa-solid fa-circle-down"></i>
+        </button>
+        <button type="button" class="mobile-nav-item" onclick="navigateTo('downloads')" id="tab-downloads">
+            <i class="fa-solid fa-download"></i>
             <span>Yuklamalar</span>
-        </div>
-        <div class="nav-item" onclick="navigateTo('settings')" id="tab-settings">
-            <i class="fa-solid fa-gear"></i>
-            <span>Sozlamalar</span>
-        </div>
+        </button>
+        <button type="button" class="mobile-nav-item" onclick="navigateTo('settings')" id="tab-settings">
+            <i class="fa-solid fa-user"></i>
+            <span>Profil</span>
+        </button>
     </nav>
 
     <!-- Vendor JS (Local Offline) -->

@@ -89,7 +89,7 @@ function navigateTo(viewName, addToHistory = true) {
     if (targetView) targetView.classList.add('active');
 
     // Update Bottom Nav Tabs
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.mobile-nav-item, .nav-item').forEach(el => el.classList.remove('active'));
     const targetTab = document.getElementById(`tab-${viewName}`);
     if (targetTab) targetTab.classList.add('active');
 
@@ -124,7 +124,7 @@ function navigateBack() {
 }
 
 // =========================================================================
-// 1. HOME VIEW LOGIC
+// 1. HOME VIEW LOGIC (EXACT ANIRATE.WWWZ.UZ DESIGN)
 // =========================================================================
 
 async function fetchHomeData() {
@@ -143,21 +143,56 @@ async function fetchHomeData() {
 }
 
 function renderHomeScreen(data) {
-    // 1. Render Hero Swiper
+    // 1. Render Hero Swiper (Exact Website Hero Layout)
     const heroWrapper = document.getElementById('heroSwiperWrapper');
     if (heroWrapper && data.featured && data.featured.length > 0) {
         heroWrapper.innerHTML = data.featured.map(item => `
-            <div class="swiper-slide hero-slide-card" onclick="openAnimeDetail(${item.id})">
-                <img src="${item.poster}" alt="${escapeHtml(item.title)}" class="hero-slide-img" loading="lazy">
-                <div class="hero-slide-overlay">
-                    <span class="hero-slide-badge"><i class="fa-solid fa-fire"></i> Tavsiya</span>
-                    <div class="hero-slide-title">${escapeHtml(item.title)}</div>
-                    <div class="hero-slide-meta">
-                        <span><i class="fa-solid fa-star" style="color:#ffd700;"></i> ${item.rating || '9.5'}</span>
-                        <span>•</span>
-                        <span>${escapeHtml(item.genres || 'Anime')}</span>
-                        <span>•</span>
-                        <span>${item.year || '2024'}</span>
+            <div class="swiper-slide hero-slide">
+                <div class="hero-backdrop" style="background-image: url('${item.banner || item.poster}');"></div>
+                <div class="hero-gradient-overlay"></div>
+                <div class="hero-gradient-bottom"></div>
+                <div class="hero-content-wrap">
+                    <div class="hero-info">
+                        <div class="hero-badges">
+                            <span class="hero-pill hero-pill-gold">
+                                <i class="fa-solid fa-fire"></i>
+                                <span>Tavsiya etiladi</span>
+                            </span>
+                            <span class="hero-pill hero-pill-rating">
+                                <i class="fa-solid fa-star"></i>
+                                <span>${item.rating ? Number(item.rating).toFixed(1) : '9.0'}</span>
+                            </span>
+                            <span class="hero-pill hero-pill-status">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <span>${escapeHtml(item.status || 'Tugallangan')}</span>
+                            </span>
+                            <span class="hero-pill">
+                                <i class="fa-regular fa-calendar"></i>
+                                <span>${escapeHtml(String(item.year || '2024'))}</span>
+                            </span>
+                        </div>
+                        <h1 class="hero-title" style="font-size: 22px; line-height: 1.25; margin-bottom: 8px;">${escapeHtml(item.title)}</h1>
+                        <div class="hero-meta-row" style="margin-bottom: 10px;">
+                            <span class="hero-meta-item">
+                                <i class="fa-solid fa-masks-theater"></i>
+                                <span>${escapeHtml(item.genres || 'Anime')}</span>
+                            </span>
+                            <span class="hero-meta-item">
+                                <i class="fa-solid fa-microphone-lines"></i>
+                                <span>AniRate Dub</span>
+                            </span>
+                        </div>
+                        <p class="hero-desc" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 16px; font-size: 12.5px; line-height: 1.5;">${escapeHtml(item.description || "Ushbu animeni o'zbek tilida yuqori sifatda tomosha qiling.")}</p>
+                        <div class="hero-actions" style="display: flex; gap: 10px;">
+                            <button class="btn-netflix-play" onclick="openAnimeDetail(${item.id})">
+                                <i class="fa-solid fa-play"></i>
+                                <span>Tomosha qilish</span>
+                            </button>
+                            <button class="btn-netflix-info" onclick="openAnimeDetail(${item.id})">
+                                <i class="fa-solid fa-circle-info"></i>
+                                <span>Batafsil</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -165,23 +200,29 @@ function renderHomeScreen(data) {
 
         if (heroSwiperInstance) heroSwiperInstance.destroy();
         heroSwiperInstance = new Swiper('#heroSwiper', {
-            slidesPerView: 'auto',
-            centeredSlides: true,
-            spaceBetween: 14,
+            slidesPerView: 1,
+            spaceBetween: 0,
             loop: true,
-            autoplay: { delay: 4000, disableOnInteraction: false },
+            autoplay: { delay: 4500, disableOnInteraction: false },
+            pagination: { el: '.hero-pagination', clickable: true },
+            navigation: {
+                nextEl: '.hero-arrow-next',
+                prevEl: '.hero-arrow-prev'
+            }
         });
     }
 
     // 2. Render Genre Quick Chips
     const genreScroll = document.getElementById('homeGenreScroll');
     if (genreScroll && data.genres && data.genres.length > 0) {
-        genreScroll.innerHTML = `<div class="category-chip ${currentGenreFilter === '' ? 'active' : ''}" onclick="filterByGenre('')">Barchasi</div>` +
-            data.genres.map(g => `
-                <div class="category-chip ${currentGenreFilter === g.name ? 'active' : ''}" onclick="filterByGenre('${escapeHtml(g.name)}')">
-                    ${escapeHtml(g.name)}
-                </div>
-            `).join('');
+        let genreHtml = `<a class="genre-tag-pill ${currentGenreFilter === '' ? 'active' : ''}" onclick="filterByGenre('')"><i class="fa-solid fa-layer-group"></i> <span>Barchasi</span></a>`;
+        data.genres.forEach(g => {
+            const gName = typeof g === 'object' ? (g.name || '') : String(g);
+            if (gName) {
+                genreHtml += `<a class="genre-tag-pill ${currentGenreFilter === gName ? 'active' : ''}" onclick="filterByGenre('${escapeHtml(gName)}')"><i class="fa-solid fa-tag"></i> <span>${escapeHtml(gName)}</span></a>`;
+            }
+        });
+        genreScroll.innerHTML = genreHtml;
     }
 
     // 3. Render Latest Anime Grid
@@ -199,10 +240,9 @@ function renderHomeScreen(data) {
 
 function filterByGenre(genre) {
     currentGenreFilter = genre;
-    document.querySelectorAll('#homeGenreScroll .category-chip').forEach(el => {
-        el.classList.toggle('active', el.textContent.trim() === (genre || 'Barchasi'));
+    document.querySelectorAll('#homeGenreScroll .genre-tag-pill').forEach(el => {
+        el.classList.toggle('active', el.textContent.trim().toLowerCase().includes((genre || 'barchasi').toLowerCase()));
     });
-    // Open catalog filtered by this genre
     const typeSelect = document.getElementById('catalogTypeSelect');
     if (typeSelect) typeSelect.value = '';
     loadCatalog(1, false, genre);
@@ -222,7 +262,7 @@ async function loadCatalog(page = 1, append = false, forcedGenre = null) {
 
     if (!append) {
         catalogPage = 1;
-        grid.innerHTML = Array(6).fill('<div class="anime-card skeleton" style="height: 180px;"></div>').join('');
+        grid.innerHTML = Array(6).fill('<div class="animedia-card skeleton" style="height: 220px;"></div>').join('');
     }
 
     try {
@@ -235,7 +275,7 @@ async function loadCatalog(page = 1, append = false, forcedGenre = null) {
             if (!append) grid.innerHTML = '';
 
             if (items.length === 0 && !append) {
-                grid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><i class="fa-solid fa-film"></i><div>Hech qanday anime topilmadi</div></div>';
+                grid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1; padding: 40px; text-align: center;"><i class="fa-solid fa-film"></i><div>Hech qanday anime topilmadi</div></div>';
                 loadMoreBox.style.display = 'none';
                 return;
             }
@@ -257,7 +297,7 @@ function loadMoreCatalog() {
 }
 
 // =========================================================================
-// 3. DETAIL VIEW LOGIC
+// 3. DETAIL VIEW LOGIC (EXACT anime.php DESIGN)
 // =========================================================================
 
 async function openAnimeDetail(animeId) {
@@ -266,8 +306,7 @@ async function openAnimeDetail(animeId) {
     // Show loading placeholders
     document.getElementById('detailTitle').textContent = 'Yuklanmoqda...';
     document.getElementById('detailPosterImg').src = 'img/icon-192.png';
-    document.getElementById('detailBackdrop').style.backgroundImage = 'none';
-    document.getElementById('detailEpisodesList').innerHTML = '<div class="skeleton" style="height: 60px; border-radius: 12px;"></div>';
+    document.getElementById('detailEpisodesList').innerHTML = '<div class="skeleton" style="height: 50px; border-radius: 12px;"></div>';
     document.getElementById('detailSimilarGrid').innerHTML = '';
 
     try {
@@ -280,13 +319,13 @@ async function openAnimeDetail(animeId) {
 
             document.getElementById('detailTitle').textContent = anime.title || 'Anime';
             document.getElementById('detailPosterImg').src = anime.poster || 'img/icon-192.png';
-            document.getElementById('detailBackdrop').style.backgroundImage = `url('${anime.poster}')`;
             document.getElementById('detailGenres').textContent = anime.genres || 'Anime';
-            document.getElementById('detailYear').textContent = anime.year || '2024';
-            document.getElementById('detailStatus').textContent = anime.status || 'Davom etmoqda';
-            document.getElementById('detailRating').textContent = anime.rating || '9.0';
+            document.getElementById('detailTypePill').innerHTML = `<i class="fa-solid fa-tv"></i> ${escapeHtml(anime.turi || 'Anime')}`;
+            document.getElementById('detailYearPill').innerHTML = `<i class="fa-regular fa-calendar"></i> ${escapeHtml(String(anime.year || '2024'))}`;
+            document.getElementById('detailRatingPill').innerHTML = `<i class="fa-solid fa-star"></i> ${anime.rating || '9.0'}`;
+            document.getElementById('detailStatusPill').innerHTML = `<i class="fa-solid fa-circle-check"></i> ${escapeHtml(anime.status || 'Tugallangan')}`;
             document.getElementById('detailDescription').textContent = anime.description || "Tavsif mavjud emas.";
-            document.getElementById('detailEpCount').textContent = episodes.length;
+            document.getElementById('detailEpCount').textContent = (episodes ? episodes.length : 0) + ' ta';
 
             // Setup Quick Buttons
             const btnPlayFirst = document.getElementById('btnPlayFirst');
@@ -297,7 +336,7 @@ async function openAnimeDetail(animeId) {
                 btnPlayFirst.onclick = () => playEpisodeVideo(firstEp, anime);
                 btnDownloadFirst.onclick = () => startEpisodeDownload(firstEp, anime);
                 btnPlayFirst.style.display = 'flex';
-                btnDownloadFirst.style.display = 'flex';
+                btnDownloadFirst.style.display = 'inline-flex';
             } else {
                 btnPlayFirst.style.display = 'none';
                 btnDownloadFirst.style.display = 'none';
@@ -307,23 +346,27 @@ async function openAnimeDetail(animeId) {
             const epList = document.getElementById('detailEpisodesList');
             if (episodes && episodes.length > 0) {
                 epList.innerHTML = episodes.map(ep => `
-                    <div class="episode-card-item">
-                        <div class="episode-info" onclick="playEpisodeDirect(${ep.qism})">
-                            <div class="episode-num-badge">${ep.qism}</div>
-                            <div class="episode-title">${ep.title ? escapeHtml(ep.title) : `${ep.qism}-qism`}</div>
+                    <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex: 1; cursor: pointer;" onclick="playEpisodeDirect(${ep.qism})">
+                            <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(229, 9, 20, 0.15); border: 1px solid rgba(229, 9, 20, 0.4); color: #E50914; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                ${ep.qism}
+                            </div>
+                            <div style="font-size: 13.5px; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${ep.title ? escapeHtml(ep.title) : `${ep.qism}-qism`}
+                            </div>
                         </div>
-                        <div class="episode-actions">
-                            <button class="btn-ep-play" onclick="playEpisodeDirect(${ep.qism})" title="Ko'rish">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button type="button" class="btn-animedia-primary" onclick="playEpisodeDirect(${ep.qism})" title="Ko'rish" style="width: 36px; height: 36px; border-radius: 10px; padding: 0; display: flex; align-items: center; justify-content: center;">
                                 <i class="fa-solid fa-play"></i>
                             </button>
-                            <button class="btn-ep-download" onclick="downloadEpisodeDirect(${ep.qism})" title="Yuklab olish">
+                            <button type="button" class="btn-animedia-secondary" onclick="downloadEpisodeDirect(${ep.qism})" title="Yuklab olish" style="width: 36px; height: 36px; border-radius: 10px; padding: 0; display: flex; align-items: center; justify-content: center;">
                                 <i class="fa-solid fa-download"></i>
                             </button>
                         </div>
                     </div>
                 `).join('');
             } else {
-                epList.innerHTML = '<div style="color:#8E8E93; font-size:13px; text-align:center; padding:20px;">Hozircha qismlar yuklanmagan</div>';
+                epList.innerHTML = '<div style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">Hozircha qismlar yuklanmagan</div>';
             }
 
             // Render Similar Anime
@@ -554,6 +597,7 @@ function updateAuthState() {
 
     const topbarAdminBtn = document.getElementById('topbarAdminBtn');
     const topbarUserIcon = document.getElementById('topbarUserIcon');
+    const topbarUserText = document.getElementById('topbarUserText');
     const guestCard = document.getElementById('settingsProfileGuest');
     const userCard = document.getElementById('settingsProfileUser');
     const adminCard = document.getElementById('settingsProfileAdmin');
@@ -563,11 +607,12 @@ function updateAuthState() {
     }
 
     if (isAdmin) {
-        if (topbarAdminBtn) topbarAdminBtn.style.display = 'flex';
+        if (topbarAdminBtn) topbarAdminBtn.style.display = 'inline-flex';
         if (topbarUserIcon) {
             topbarUserIcon.className = 'fa-solid fa-crown';
             topbarUserIcon.style.color = '#FFD700';
         }
+        if (topbarUserText) topbarUserText.textContent = 'Admin';
         if (guestCard) guestCard.style.display = 'none';
         if (userCard) userCard.style.display = 'none';
         if (adminCard) {
@@ -583,6 +628,7 @@ function updateAuthState() {
             topbarUserIcon.className = 'fa-solid fa-circle-user';
             topbarUserIcon.style.color = '#ffffff';
         }
+        if (topbarUserText) topbarUserText.textContent = user.display_name || user.username || 'Profil';
         if (guestCard) guestCard.style.display = 'none';
         if (adminCard) adminCard.style.display = 'none';
         if (userCard) {
@@ -598,8 +644,9 @@ function updateAuthState() {
         if (topbarAdminBtn) topbarAdminBtn.style.display = 'none';
         if (topbarUserIcon) {
             topbarUserIcon.className = 'fa-solid fa-circle-user';
-            topbarUserIcon.style.color = '#8E8E93';
+            topbarUserIcon.style.color = 'inherit';
         }
+        if (topbarUserText) topbarUserText.textContent = 'Profil';
         if (guestCard) guestCard.style.display = 'flex';
         if (userCard) userCard.style.display = 'none';
         if (adminCard) adminCard.style.display = 'none';
@@ -754,18 +801,23 @@ function vibrateNative(ms = 20) {
 }
 
 function createAnimeCardHtml(item) {
+    const rating = item.rating ? Number(item.rating).toFixed(1) : '9.0';
     return `
-        <div class="anime-card" onclick="openAnimeDetail(${item.id})">
-            <div class="anime-poster-box">
-                <img src="${item.poster || 'img/icon-192.png'}" alt="${escapeHtml(item.title)}" class="anime-poster-img" loading="lazy">
-                <div class="anime-card-badge">
-                    <i class="fa-solid fa-star"></i> ${item.rating || '9.0'}
+        <div class="animedia-card" onclick="openAnimeDetail(${item.id})">
+            <div class="card-poster-wrap">
+                <img src="${item.poster || 'img/icon-192.png'}" alt="${escapeHtml(item.title)}" class="card-poster-img" loading="lazy">
+                <div class="card-top-badges">
+                    <span class="badge-rating-pill"><i class="fa-solid fa-star"></i> ${rating}</span>
+                    ${item.ep_count ? `<span class="badge-ep-pill"><i class="fa-solid fa-tv"></i> ${item.ep_count}</span>` : ''}
                 </div>
-                ${item.ep_count ? `<div class="anime-ep-badge">${item.ep_count} qism</div>` : ''}
+                <div class="card-hover-overlay"><div class="card-play-btn"><i class="fa-solid fa-play"></i></div></div>
             </div>
-            <div class="anime-info-box">
-                <div class="anime-title">${escapeHtml(item.title)}</div>
-                <div class="anime-year">${item.year || ''} • ${escapeHtml(item.turi || 'Anime')}</div>
+            <div class="card-content">
+                <h3 class="card-title">${escapeHtml(item.title)}</h3>
+                <div class="card-meta-row">
+                    <span class="card-year">${item.year || ''}</span>
+                    <span class="card-ep-badge">${escapeHtml(item.status || item.turi || 'Anime')}</span>
+                </div>
             </div>
         </div>
     `;
