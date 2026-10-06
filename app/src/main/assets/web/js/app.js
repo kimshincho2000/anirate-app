@@ -543,26 +543,36 @@ function openTelegramChannel() {
     }
 }
 
+let brandTapCount = 0;
+let brandTapTimer = null;
+function handleBrandTap() {
+    navigateTo('home');
+    brandTapCount++;
+    clearTimeout(brandTapTimer);
+    brandTapTimer = setTimeout(() => {
+        brandTapCount = 0;
+    }, 2500);
+
+    if (brandTapCount >= 5) {
+        brandTapCount = 0;
+        openAdminModal();
+    }
+}
+
 function checkAdminState() {
     const isAdmin = localStorage.getItem('anirate_is_admin') === 'true';
     const topbarBtn = document.getElementById('topbarAdminBtn');
-    const loginCard = document.getElementById('adminLoginCard');
-    const panelCard = document.getElementById('adminPanelCard');
-    const logoutCard = document.getElementById('adminLogoutCard');
 
     if (isAdmin) {
         if (topbarBtn) topbarBtn.style.display = 'flex';
-        if (loginCard) loginCard.style.display = 'none';
-        if (panelCard) panelCard.style.display = 'flex';
-        if (logoutCard) logoutCard.style.display = 'flex';
         if (window.AniRateNative && typeof window.AniRateNative.setAdmin === 'function') {
             window.AniRateNative.setAdmin(true);
         }
     } else {
         if (topbarBtn) topbarBtn.style.display = 'none';
-        if (loginCard) loginCard.style.display = 'flex';
-        if (panelCard) panelCard.style.display = 'none';
-        if (logoutCard) logoutCard.style.display = 'none';
+        if (window.AniRateNative && typeof window.AniRateNative.setAdmin === 'function') {
+            window.AniRateNative.setAdmin(false);
+        }
     }
 }
 

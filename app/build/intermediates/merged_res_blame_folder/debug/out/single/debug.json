@@ -120,10 +120,6 @@
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/ic_speed.xml"
     },
     {
-        "merged": "uz.anirate.app-merged_res-33:/raw_anirate_sound.mp3.flat",
-        "source": "uz.anirate.app-main-35:/raw/anirate_sound.mp3"
-    },
-    {
         "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_ic_check.xml.flat",
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/ic_check.xml"
     },
@@ -156,7 +152,15 @@
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/ic_trash.xml"
     },
     {
+        "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/raw_anirate_sound.mp3.flat",
+        "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/raw/anirate_sound.mp3"
+    },
+    {
         "merged": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-merged_res-33:/drawable_bg_ios_dynamic_island.xml.flat",
         "source": "/home/terminal/.gradle/daemon/8.4/uz.anirate.app-main-35:/drawable/bg_ios_dynamic_island.xml"
+    },
+    {
+        "merged": "uz.anirate.app-merged_res-33:/layout_activity_main.xml.flat",
+        "source": "uz.anirate.app-main-35:/layout/activity_main.xml"
     }
 ]

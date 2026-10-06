@@ -750,7 +750,7 @@
 
     <!-- Top Navigation Bar -->
     <header class="app-topbar">
-        <div class="app-brand" onclick="navigateTo('home')">
+        <div class="app-brand" onclick="handleBrandTap()">
             <img src="img/icon-192.png" alt="AniRate" class="app-brand-logo">
             <span class="app-brand-text">AniRate</span>
         </div>
@@ -962,40 +962,6 @@
                     </div>
                 </div>
                 <i class="fa-solid fa-arrow-up-right-from-square" style="color: #8E8E93;"></i>
-            </div>
-
-            <!-- Admin Section Cards -->
-            <div class="download-item-card" id="adminLoginCard" onclick="openAdminModal()">
-                <div class="download-item-left">
-                    <div class="download-item-icon" style="color: #FFD700; background: rgba(255, 215, 0, 0.15);"><i class="fa-solid fa-crown"></i></div>
-                    <div>
-                        <div class="download-item-name">Admin sifatida kirish</div>
-                        <div class="download-item-size">Login va parol orqali kirish</div>
-                    </div>
-                </div>
-                <i class="fa-solid fa-chevron-right" style="color: #8E8E93;"></i>
-            </div>
-
-            <div class="download-item-card" id="adminPanelCard" onclick="openAdminPanel()" style="display: none; border-color: rgba(255, 215, 0, 0.4); background: rgba(255, 215, 0, 0.08);">
-                <div class="download-item-left">
-                    <div class="download-item-icon" style="color: #FFD700; background: rgba(255, 215, 0, 0.25);"><i class="fa-solid fa-crown"></i></div>
-                    <div>
-                        <div class="download-item-name" style="color: #FFD700; font-weight: 800;">👑 Admin Panelga o'tish</div>
-                        <div class="download-item-size">Animelarni yuklash, tahrirlash va boshqaruv</div>
-                    </div>
-                </div>
-                <i class="fa-solid fa-arrow-up-right-from-square" style="color: #FFD700;"></i>
-            </div>
-
-            <div class="download-item-card" id="adminLogoutCard" onclick="logoutAdmin()" style="display: none; border-color: rgba(255, 59, 48, 0.3);">
-                <div class="download-item-left">
-                    <div class="download-item-icon" style="color: #FF3B30; background: rgba(255, 59, 48, 0.15);"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
-                    <div>
-                        <div class="download-item-name" style="color: #FF3B30;">Admin rejimidan chiqish</div>
-                        <div class="download-item-size">Oddiy foydalanuvchi holatiga qaytish</div>
-                    </div>
-                </div>
-                <i class="fa-solid fa-chevron-right" style="color: #8E8E93;"></i>
             </div>
         </div>
     </section>
