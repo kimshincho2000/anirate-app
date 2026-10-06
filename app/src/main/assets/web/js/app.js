@@ -1181,6 +1181,8 @@ function vibrateNative(ms = 20) {
 
 function createAnimeCardHtml(item) {
     const rating = item.rating ? Number(item.rating).toFixed(1) : '9.0';
+    const isCompleted = (item.status === 'Tugallangan');
+    const statusText = item.status || 'Tugallangan';
     return `
         <div class="animedia-card" onclick="openAnimeDetail(${item.id})">
             <div class="card-poster-wrap">
@@ -1194,8 +1196,11 @@ function createAnimeCardHtml(item) {
             <div class="card-content">
                 <h3 class="card-title">${escapeHtml(item.title)}</h3>
                 <div class="card-meta-row">
-                    <span class="card-year">${item.year || ''}</span>
-                    <span class="card-ep-badge">${escapeHtml(item.status || item.turi || 'Anime')}</span>
+                    <span class="card-year"><i class="fa-regular fa-calendar"></i> ${item.year || ''}</span>
+                    <span class="card-status-tag">
+                        <span class="card-status-dot ${isCompleted ? 'completed' : ''}"></span>
+                        <span>${escapeHtml(statusText)}</span>
+                    </span>
                 </div>
             </div>
         </div>
