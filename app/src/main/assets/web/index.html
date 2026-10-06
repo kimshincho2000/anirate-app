@@ -755,6 +755,9 @@
             <span class="app-brand-text">AniRate</span>
         </div>
         <div class="app-topbar-actions">
+            <button class="icon-btn" id="topbarAdminBtn" onclick="openAdminPanel()" title="Admin Panel" style="display: none; color: #ffd700; border-color: rgba(255, 215, 0, 0.4); background: rgba(255, 215, 0, 0.15);">
+                <i class="fa-solid fa-crown"></i>
+            </button>
             <button class="icon-btn" onclick="navigateTo('search')" title="Qidiruv">
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>
@@ -961,18 +964,71 @@
                 <i class="fa-solid fa-arrow-up-right-from-square" style="color: #8E8E93;"></i>
             </div>
 
-            <div class="download-item-card" onclick="openAdminPrompt()">
+            <!-- Admin Section Cards -->
+            <div class="download-item-card" id="adminLoginCard" onclick="openAdminModal()">
                 <div class="download-item-left">
                     <div class="download-item-icon" style="color: #FFD700; background: rgba(255, 215, 0, 0.15);"><i class="fa-solid fa-crown"></i></div>
                     <div>
-                        <div class="download-item-name">Admin rejimi</div>
-                        <div class="download-item-size">Boshqaruv va maxsus ruxsatlar</div>
+                        <div class="download-item-name">Admin sifatida kirish</div>
+                        <div class="download-item-size">Login va parol orqali kirish</div>
+                    </div>
+                </div>
+                <i class="fa-solid fa-chevron-right" style="color: #8E8E93;"></i>
+            </div>
+
+            <div class="download-item-card" id="adminPanelCard" onclick="openAdminPanel()" style="display: none; border-color: rgba(255, 215, 0, 0.4); background: rgba(255, 215, 0, 0.08);">
+                <div class="download-item-left">
+                    <div class="download-item-icon" style="color: #FFD700; background: rgba(255, 215, 0, 0.25);"><i class="fa-solid fa-crown"></i></div>
+                    <div>
+                        <div class="download-item-name" style="color: #FFD700; font-weight: 800;">👑 Admin Panelga o'tish</div>
+                        <div class="download-item-size">Animelarni yuklash, tahrirlash va boshqaruv</div>
+                    </div>
+                </div>
+                <i class="fa-solid fa-arrow-up-right-from-square" style="color: #FFD700;"></i>
+            </div>
+
+            <div class="download-item-card" id="adminLogoutCard" onclick="logoutAdmin()" style="display: none; border-color: rgba(255, 59, 48, 0.3);">
+                <div class="download-item-left">
+                    <div class="download-item-icon" style="color: #FF3B30; background: rgba(255, 59, 48, 0.15);"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
+                    <div>
+                        <div class="download-item-name" style="color: #FF3B30;">Admin rejimidan chiqish</div>
+                        <div class="download-item-size">Oddiy foydalanuvchi holatiga qaytish</div>
                     </div>
                 </div>
                 <i class="fa-solid fa-chevron-right" style="color: #8E8E93;"></i>
             </div>
         </div>
     </section>
+
+    <!-- ==================== ADMIN LOGIN MODAL ==================== -->
+    <div id="adminLoginModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); z-index: 3000; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #18181c; border: 1px solid rgba(255,215,0,0.3); border-radius: 20px; width: 100%; max-width: 360px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="width: 54px; height: 54px; border-radius: 16px; background: rgba(255, 215, 0, 0.15); color: #FFD700; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 10px;">
+                    <i class="fa-solid fa-crown"></i>
+                </div>
+                <h3 style="margin: 0; font-size: 18px; color: #ffffff;">Admin tizimiga kirish</h3>
+                <p style="margin: 4px 0 0; font-size: 12px; color: #8E8E93;">Boshqaruv huquqini faollashtirish uchun parolni kiriting</p>
+            </div>
+            <form onsubmit="handleAdminLoginSubmit(event)" style="display: flex; flex-direction: column; gap: 14px;">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #a3a3a3; text-transform: uppercase;">Login</label>
+                    <input type="text" id="adminLoginInput" placeholder="admin" value="admin" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; height: 42px; padding: 0 14px; color: #fff; font-size: 14px; outline: none;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #a3a3a3; text-transform: uppercase;">Parol</label>
+                    <input type="password" id="adminPasswordInput" placeholder="Admin parolini kiriting" required style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; height: 42px; padding: 0 14px; color: #fff; font-size: 14px; outline: none;">
+                </div>
+                <div id="adminLoginError" style="display: none; color: #FF3B30; font-size: 12px; text-align: center;"></div>
+                <button type="submit" id="btnAdminSubmit" style="height: 44px; background: linear-gradient(135deg, #FFD700, #FFA500); color: #000; font-weight: 800; font-size: 14px; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px;">
+                    <i class="fa-solid fa-lock-open"></i> Kirish
+                </button>
+                <button type="button" onclick="closeAdminModal()" style="height: 40px; background: transparent; border: 1px solid rgba(255,255,255,0.12); color: #a3a3a3; font-weight: 600; font-size: 13px; border-radius: 12px; cursor: pointer;">
+                    Bekor qilish
+                </button>
+            </form>
+        </div>
+    </div>
 
     <!-- ==================== FULLSCREEN PLAYER MODAL ==================== -->
     <div class="player-modal-box" id="playerModal">

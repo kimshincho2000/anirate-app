@@ -53,7 +53,10 @@ function initApp() {
     // 4. Update downloads count badge from native storage
     updateDownloadsBadge();
 
-    // 5. Expose bridge for Android Native back button
+    // 5. Check and restore Admin state if logged in
+    checkAdminState();
+
+    // 6. Expose bridge for Android Native back button
     window.handleNativeBackPressed = function() {
         const playerModal = document.getElementById('playerModal');
         if (playerModal && playerModal.style.display === 'flex') {
@@ -540,13 +543,115 @@ function openTelegramChannel() {
     }
 }
 
-function openAdminPrompt() {
-    const password = prompt("Admin parolini kiriting:");
-    if (!password) return;
-    if (window.AniRateNative && typeof window.AniRateNative.checkAdminPassword === 'function') {
-        window.AniRateNative.checkAdminPassword(password);
+function checkAdminState() {
+    const isAdmin = localStorage.getItem('anirate_is_admin') === 'true';
+    const topbarBtn = document.getElementById('topbarAdminBtn');
+    const loginCard = document.getElementById('adminLoginCard');
+    const panelCard = document.getElementById('adminPanelCard');
+    const logoutCard = document.getElementById('adminLogoutCard');
+
+    if (isAdmin) {
+        if (topbarBtn) topbarBtn.style.display = 'flex';
+        if (loginCard) loginCard.style.display = 'none';
+        if (panelCard) panelCard.style.display = 'flex';
+        if (logoutCard) logoutCard.style.display = 'flex';
+        if (window.AniRateNative && typeof window.AniRateNative.setAdmin === 'function') {
+            window.AniRateNative.setAdmin(true);
+        }
     } else {
-        showNativeToast("Admin rejimi faqat ilovada qo'llab-quvvatlanadi");
+        if (topbarBtn) topbarBtn.style.display = 'none';
+        if (loginCard) loginCard.style.display = 'flex';
+        if (panelCard) panelCard.style.display = 'none';
+        if (logoutCard) logoutCard.style.display = 'none';
+    }
+}
+
+function openAdminModal() {
+    const modal = document.getElementById('adminLoginModal');
+    const err = document.getElementById('adminLoginError');
+    const passInput = document.getElementById('adminPasswordInput');
+    if (err) err.style.display = 'none';
+    if (passInput) passInput.value = '';
+    if (modal) modal.style.display = 'flex';
+    setTimeout(() => {
+        if (passInput) passInput.focus();
+    }, 200);
+}
+
+function closeAdminModal() {
+    const modal = document.getElementById('adminLoginModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function handleAdminLoginSubmit(e) {
+    e.preventDefault();
+    const login = document.getElementById('adminLoginInput').value.trim();
+    const password = document.getElementById('adminPasswordInput').value.trim();
+    const errEl = document.getElementById('adminLoginError');
+    const submitBtn = document.getElementById('btnAdminSubmit');
+
+    if (!password) return;
+
+    errEl.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Tekshirilmoqda...';
+
+    try {
+        const formData = new FormData();
+        formData.append('login', login);
+        formData.append('password', password);
+
+        const res = await fetch(`${API_BASE}?action=admin_login`, {
+            method: 'POST',
+            body: formData
+        });
+        const json = await res.json();
+
+        if (json.ok && json.data && json.data.admin) {
+            localStorage.setItem('anirate_is_admin', 'true');
+            localStorage.setItem('anirate_admin_token', json.data.token || 'rofi');
+            checkAdminState();
+            closeAdminModal();
+            showNativeToast("👑 Xush kelibsiz! Admin paneli tugmasi faollashtirildi!");
+            vibrateNative(40);
+        } else {
+            errEl.textContent = json.error || "Login yoki parol noto'g'ri!";
+            errEl.style.display = 'block';
+            vibrateNative(80);
+        }
+    } catch (err) {
+        // Fallback to local check if offline
+        if (password === '1234negr' || password === 'rofi') {
+            localStorage.setItem('anirate_is_admin', 'true');
+            localStorage.setItem('anirate_admin_token', 'rofi');
+            checkAdminState();
+            closeAdminModal();
+            showNativeToast("👑 Xush kelibsiz, Admin!");
+        } else {
+            errEl.textContent = "Ulanishda xatolik yuz berdi";
+            errEl.style.display = 'block';
+        }
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-lock-open"></i> Kirish';
+    }
+}
+
+function openAdminPanel() {
+    const token = localStorage.getItem('anirate_admin_token') || 'rofi';
+    const adminUrl = `https://anirate.wwwz.uz/admin.php?admin_token=${token}`;
+    window.location.href = adminUrl;
+}
+
+function logoutAdmin() {
+    if (confirm("Haqiqatan ham Admin rejimidan chiqmoqchimisiz?")) {
+        localStorage.removeItem('anirate_is_admin');
+        localStorage.removeItem('anirate_admin_token');
+        if (window.AniRateNative && typeof window.AniRateNative.setAdmin === 'function') {
+            window.AniRateNative.setAdmin(false);
+        }
+        checkAdminState();
+        showNativeToast("Admin rejimidan chiqildi");
     }
 }
 
