@@ -98,6 +98,16 @@ function navigateTo(viewName, addToHistory = true) {
     // Haptic feedback
     vibrateNative(15);
 
+    // Pause player and reset theater lights if leaving detail view
+    if (viewName !== 'detail') {
+        if (plyrInstance) {
+            try { plyrInstance.pause(); } catch(e) {}
+        }
+        document.body.classList.remove('theater-lights-off');
+        dismissNextEpOverlay();
+        closePlayerModal();
+    }
+
     // Specific View Initializers
     if (viewName === 'catalog') {
         if (!document.getElementById('catalogGrid').children.length) {
@@ -300,13 +310,224 @@ function loadMoreCatalog() {
 // 3. DETAIL VIEW LOGIC (EXACT anime.php DESIGN)
 // =========================================================================
 
-async function openAnimeDetail(animeId) {
-    navigateTo('detail');
+// =========================================================================
+// 3. DETAIL VIEW & PLAYER LOGIC (100% 1:1 TO anime.php)
+// =========================================================================
 
-    // Show loading placeholders
+let plyrInstance = null;
+let nextEpTimerInterval = null;
+let currentEpNum = 1;
+let seekAccumulator = 0;
+let seekTimer = null;
+
+function initPlyrPlayer() {
+    const videoEl = document.getElementById('player');
+    if (!videoEl || typeof Plyr === 'undefined') return;
+
+    if (!plyrInstance) {
+        try {
+            plyrInstance = new Plyr('#player', {
+                controls: [
+                    'play-large',
+                    'play',
+                    'progress',
+                    'current-time',
+                    'duration',
+                    'mute',
+                    'volume',
+                    'settings',
+                    'pip',
+                    'fullscreen'
+                ],
+                settings: ['speed'],
+                speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
+                seekTime: 10,
+                keyboard: { focused: true, global: true },
+                clickToPlay: true,
+                hideControls: true,
+                resetOnEnd: false,
+                tooltips: { controls: true, seek: true }
+            });
+
+            videoEl.addEventListener('error', function() {
+                const notice = document.getElementById('playerErrorNotice');
+                if (notice) notice.style.display = 'flex';
+            });
+
+            // Ekran chetlariga 2 marta bosganda 10s oldinga/orqaga o'tkazish
+            setupDoubleTapSeek();
+
+            // Video tugaganda keyingi qism pop-up taymerini ishga tushirish
+            plyrInstance.on('ended', function() {
+                checkAndStartNextEpisode();
+            });
+        } catch (e) {
+            console.error('Plyr init error:', e);
+        }
+    }
+}
+
+// 10 soniya o'tkazish va animatsiyali ko'rsatkich (Exact anime.php)
+function performSeek(deltaSeconds, side) {
+    if (!plyrInstance) return;
+
+    const curTime = plyrInstance.currentTime || 0;
+    const dur = plyrInstance.duration || 0;
+    const newTime = Math.max(0, Math.min(dur, curTime + deltaSeconds));
+    plyrInstance.currentTime = newTime;
+
+    const overlay = document.getElementById(side === 'left' ? 'seekRippleLeft' : 'seekRippleRight');
+    const textEl = document.getElementById(side === 'left' ? 'seekRippleLeftText' : 'seekRippleRightText');
+    if (!overlay || !textEl) return;
+
+    const otherOverlay = document.getElementById(side === 'left' ? 'seekRippleRight' : 'seekRippleLeft');
+    if (otherOverlay) otherOverlay.classList.remove('active');
+
+    seekAccumulator = (seekAccumulator && ((seekAccumulator > 0 && deltaSeconds > 0) || (seekAccumulator < 0 && deltaSeconds < 0)))
+        ? (seekAccumulator + deltaSeconds)
+        : deltaSeconds;
+
+    textEl.textContent = (seekAccumulator > 0 ? '+' : '') + seekAccumulator + 's';
+    overlay.classList.add('active');
+
+    if (seekTimer) clearTimeout(seekTimer);
+    seekTimer = setTimeout(function() {
+        overlay.classList.remove('active');
+        seekAccumulator = 0;
+    }, 650);
+}
+
+function setupDoubleTapSeek() {
+    const wrapper = document.getElementById('videoTheaterWrapper');
+    if (!wrapper || wrapper._hasDoubleTap) return;
+    wrapper._hasDoubleTap = true;
+
+    // Mishka (sichqoncha) bilan ekran chetini 2 marta tez bosganda (Double Click)
+    wrapper.addEventListener('dblclick', function(e) {
+        if (e.target.closest('.plyr__controls') || e.target.closest('.player-theater-header') || e.target.closest('#playerNextEpOverlay')) {
+            return;
+        }
+        const rect = wrapper.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const ratio = x / rect.width;
+
+        if (ratio < 0.38) {
+            e.preventDefault();
+            e.stopPropagation();
+            performSeek(-10, 'left');
+        } else if (ratio > 0.62) {
+            e.preventDefault();
+            e.stopPropagation();
+            performSeek(10, 'right');
+        }
+    });
+
+    // Sensorli ekran (telefon) chetlarini 2 marta tez bosganda (Double Tap)
+    let lastTapTime = 0;
+    let lastTapX = 0;
+    let lastTapY = 0;
+
+    wrapper.addEventListener('touchend', function(e) {
+        if (e.target.closest('.plyr__controls') || e.target.closest('.player-theater-header') || e.target.closest('#playerNextEpOverlay')) {
+            return;
+        }
+        const touch = e.changedTouches ? e.changedTouches[0] : null;
+        if (!touch) return;
+
+        const rect = wrapper.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        const ratio = x / rect.width;
+        const now = Date.now();
+        const timeDiff = now - lastTapTime;
+        const dist = Math.hypot(x - lastTapX, y - lastTapY);
+
+        if (timeDiff < 320 && dist < 50) {
+            if (ratio < 0.38) {
+                e.preventDefault();
+                performSeek(-10, 'left');
+                if (plyrInstance && plyrInstance.paused) {
+                    plyrInstance.play().catch(function(){});
+                }
+            } else if (ratio > 0.62) {
+                e.preventDefault();
+                performSeek(10, 'right');
+                if (plyrInstance && plyrInstance.paused) {
+                    plyrInstance.play().catch(function(){});
+                }
+            }
+            lastTapTime = 0;
+        } else {
+            lastTapTime = now;
+            lastTapX = x;
+            lastTapY = y;
+        }
+    }, { passive: false });
+}
+
+function checkAndStartNextEpisode() {
+    if (!currentAnimeData || !currentAnimeData.episodes) return;
+    const episodes = currentAnimeData.episodes;
+    const nextEp = episodes.find(e => parseInt(e.qism) === currentEpNum + 1);
+
+    if (nextEp) {
+        startNextEpCountdown(parseInt(nextEp.qism));
+    }
+}
+
+function startNextEpCountdown(nextEpNumber) {
+    const overlay = document.getElementById('playerNextEpOverlay');
+    const numEl = document.getElementById('nextCountdownNum');
+    const progressEl = document.getElementById('nextCircleProgress');
+    const titleEl = document.getElementById('nextEpCountdownTitle');
+    if (!overlay || !numEl) return;
+
+    if (titleEl) titleEl.textContent = `${nextEpNumber}-qism boshlanmoqda`;
+    overlay.style.display = 'flex';
+    let count = 5;
+    const total = 5;
+    const circumference = 163.36;
+
+    if (nextEpTimerInterval) clearInterval(nextEpTimerInterval);
+    nextEpTimerInterval = setInterval(function() {
+        count--;
+        if (numEl) numEl.textContent = count;
+        if (progressEl) {
+            const offset = circumference * (1 - count / total);
+            progressEl.style.strokeDashoffset = offset;
+        }
+        if (count <= 0) {
+            clearInterval(nextEpTimerInterval);
+            dismissNextEpOverlay();
+            loadEpisode(nextEpNumber, true);
+        }
+    }, 1000);
+}
+
+function dismissNextEpOverlay() {
+    if (nextEpTimerInterval) clearInterval(nextEpTimerInterval);
+    const overlay = document.getElementById('playerNextEpOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function playNextEpisodeImmediately() {
+    dismissNextEpOverlay();
+    if (!currentAnimeData || !currentAnimeData.episodes) return;
+    const episodes = currentAnimeData.episodes;
+    const nextEp = episodes.find(e => parseInt(e.qism) === currentEpNum + 1);
+    if (nextEp) {
+        loadEpisode(parseInt(nextEp.qism), true);
+    }
+}
+
+async function openAnimeDetail(animeId, initialEpNum = 1) {
+    navigateTo('detail');
+    dismissNextEpOverlay();
+
+    // Reset indicator
     document.getElementById('detailTitle').textContent = 'Yuklanmoqda...';
     document.getElementById('detailPosterImg').src = 'img/icon-192.png';
-    document.getElementById('detailEpisodesList').innerHTML = '<div class="skeleton" style="height: 50px; border-radius: 12px;"></div>';
+    document.getElementById('episodesGrid').innerHTML = '<div class="skeleton" style="height: 48px; border-radius: 8px; grid-column: 1/-1;"></div>';
     document.getElementById('detailSimilarGrid').innerHTML = '';
 
     try {
@@ -316,63 +537,52 @@ async function openAnimeDetail(animeId) {
         if (json.ok && json.data) {
             const { anime, episodes, similar } = json.data;
             currentAnimeData = json.data;
+            currentEpNum = initialEpNum;
 
             document.getElementById('detailTitle').textContent = anime.title || 'Anime';
             document.getElementById('detailPosterImg').src = anime.poster || 'img/icon-192.png';
             document.getElementById('detailGenres').textContent = anime.genres || 'Anime';
             document.getElementById('detailTypePill').innerHTML = `<i class="fa-solid fa-tv"></i> ${escapeHtml(anime.turi || 'Anime')}`;
             document.getElementById('detailYearPill').innerHTML = `<i class="fa-regular fa-calendar"></i> ${escapeHtml(String(anime.year || '2024'))}`;
-            document.getElementById('detailRatingPill').innerHTML = `<i class="fa-solid fa-star"></i> ${anime.rating || '9.0'}`;
+            document.getElementById('detailRatingPill').innerHTML = `<i class="fa-solid fa-star"></i> ${anime.rating ? Number(anime.rating).toFixed(1) : '9.0'}`;
             document.getElementById('detailStatusPill').innerHTML = `<i class="fa-solid fa-circle-check"></i> ${escapeHtml(anime.status || 'Tugallangan')}`;
-            document.getElementById('detailDescription').textContent = anime.description || "Tavsif mavjud emas.";
-            document.getElementById('detailEpCount').textContent = (episodes ? episodes.length : 0) + ' ta';
+            document.getElementById('detailDescription').textContent = anime.description || "Ushbu anime uchun tavsif mavjud emas.";
 
-            // Setup Quick Buttons
-            const btnPlayFirst = document.getElementById('btnPlayFirst');
-            const btnDownloadFirst = document.getElementById('btnDownloadFirst');
+            const totalEp = episodes ? episodes.length : 0;
+            const plannedEp = anime.ep_count ? parseInt(anime.ep_count) : totalEp;
+            const signalPercent = plannedEp > 0 ? Math.min(100, Math.round((totalEp / plannedEp) * 100)) : 100;
 
+            document.getElementById('detailProgressText').textContent = `${signalPercent}% (${totalEp}${plannedEp ? '/' + plannedEp : ''} qism)`;
+            document.getElementById('detailProgressBar').style.width = `${signalPercent}%`;
+            document.getElementById('detailEpCountPill').textContent = `${totalEp} ta qism`;
+
+            // Bot Links
+            const botUsername = 'aniratebot';
+            const botEpLink = `https://t.me/${botUsername}?start=ep${anime.id}n${currentEpNum}`;
+            const botAllLink = `https://t.me/${botUsername}?start=all${anime.id}`;
+            document.getElementById('detailTelegramBotLink').href = botEpLink;
+            document.getElementById('playerErrorBotLink').href = botEpLink;
+            document.getElementById('detailBotDownloadAllBtn').href = botAllLink;
+
+            // Watchlist Tugmasi Holati
+            updateWatchlistBtnState(anime.id);
+
+            // Render Episodes Grid (Exact anime.php: .ep-num-btn EP {num})
+            renderEpisodesGrid(episodes);
+
+            // Initsializatsiya va 1-qismni ochish
+            initPlyrPlayer();
             if (episodes && episodes.length > 0) {
-                const firstEp = episodes[0];
-                btnPlayFirst.onclick = () => playEpisodeVideo(firstEp, anime);
-                btnDownloadFirst.onclick = () => startEpisodeDownload(firstEp, anime);
-                btnPlayFirst.style.display = 'flex';
-                btnDownloadFirst.style.display = 'inline-flex';
-            } else {
-                btnPlayFirst.style.display = 'none';
-                btnDownloadFirst.style.display = 'none';
-            }
-
-            // Render Episodes List
-            const epList = document.getElementById('detailEpisodesList');
-            if (episodes && episodes.length > 0) {
-                epList.innerHTML = episodes.map(ep => `
-                    <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                        <div style="display: flex; align-items: center; gap: 12px; flex: 1; cursor: pointer;" onclick="playEpisodeDirect(${ep.qism})">
-                            <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(229, 9, 20, 0.15); border: 1px solid rgba(229, 9, 20, 0.4); color: #E50914; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                ${ep.qism}
-                            </div>
-                            <div style="font-size: 13.5px; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${ep.title ? escapeHtml(ep.title) : `${ep.qism}-qism`}
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <button type="button" class="btn-animedia-primary" onclick="playEpisodeDirect(${ep.qism})" title="Ko'rish" style="width: 36px; height: 36px; border-radius: 10px; padding: 0; display: flex; align-items: center; justify-content: center;">
-                                <i class="fa-solid fa-play"></i>
-                            </button>
-                            <button type="button" class="btn-animedia-secondary" onclick="downloadEpisodeDirect(${ep.qism})" title="Yuklab olish" style="width: 36px; height: 36px; border-radius: 10px; padding: 0; display: flex; align-items: center; justify-content: center;">
-                                <i class="fa-solid fa-download"></i>
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                epList.innerHTML = '<div style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">Hozircha qismlar yuklanmagan</div>';
+                const targetEp = episodes.find(e => parseInt(e.qism) === currentEpNum) || episodes[0];
+                loadEpisode(parseInt(targetEp.qism), false);
             }
 
             // Render Similar Anime
             const similarGrid = document.getElementById('detailSimilarGrid');
             if (similar && similar.length > 0) {
                 similarGrid.innerHTML = similar.map(item => createAnimeCardHtml(item)).join('');
+            } else {
+                similarGrid.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">O\'xshash animelar topilmadi</div>';
             }
         }
     } catch (err) {
@@ -380,65 +590,224 @@ async function openAnimeDetail(animeId) {
     }
 }
 
-function playEpisodeDirect(qism) {
-    if (!currentAnimeData || !currentAnimeData.episodes) return;
-    const ep = currentAnimeData.episodes.find(e => e.qism === qism);
-    if (ep) playEpisodeVideo(ep, currentAnimeData.anime);
-}
-
-function downloadEpisodeDirect(qism) {
-    if (!currentAnimeData || !currentAnimeData.episodes) return;
-    const ep = currentAnimeData.episodes.find(e => e.qism === qism);
-    if (ep) startEpisodeDownload(ep, currentAnimeData.anime);
-}
-
-function playEpisodeVideo(episode, anime) {
-    let videoUrl = episode.video_url || '';
-    if (!videoUrl) {
-        showNativeToast("Ushbu qism uchun video manzili topilmadi");
+function renderEpisodesGrid(episodes) {
+    const grid = document.getElementById('episodesGrid');
+    if (!episodes || episodes.length === 0) {
+        grid.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted); grid-column:1/-1;">Hozircha qismlar yuklanmagan</div>';
         return;
     }
 
-    const title = `${anime.title} — ${episode.qism}-qism`;
-    const playerModal = document.getElementById('playerModal');
-    const playerTitle = document.getElementById('playerModalTitle');
-    const videoEl = document.getElementById('appVideoElement');
-
-    playerTitle.textContent = title;
-    videoEl.src = videoUrl;
-    playerModal.style.display = 'flex';
-    videoEl.play().catch(() => {});
+    grid.innerHTML = episodes.map(ep => {
+        const epNum = parseInt(ep.qism);
+        const isActive = (epNum === currentEpNum);
+        return `
+            <button type="button" class="ep-num-btn ${isActive ? 'active' : ''}" data-ep="${epNum}" onclick="loadEpisode(${epNum}, true)" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px 4px; border-radius:8px; text-decoration:none; font-family:'Poppins', sans-serif; font-weight:700; font-size:13px; transition:all 0.2s; border:1px solid ${isActive ? 'var(--primary)' : 'var(--border-color)'}; background:${isActive ? 'linear-gradient(135deg, #E50914, #b81d24)' : 'rgba(255,255,255,0.04)'}; color:#fff; cursor:pointer;">
+                <span style="font-size:8px; opacity:0.6; text-transform:uppercase;">EP</span>
+                <span>${epNum}</span>
+            </button>
+        `;
+    }).join('');
 }
 
-function closePlayerModal() {
-    const playerModal = document.getElementById('playerModal');
-    const videoEl = document.getElementById('appVideoElement');
-    if (videoEl) {
-        videoEl.pause();
-        videoEl.src = '';
+function loadEpisode(epNum, autoPlay = true) {
+    if (!currentAnimeData || !currentAnimeData.episodes) return;
+    const episodes = currentAnimeData.episodes;
+    const anime = currentAnimeData.anime;
+    const ep = episodes.find(e => parseInt(e.qism) === epNum);
+    if (!ep) return;
+
+    currentEpNum = epNum;
+    dismissNextEpOverlay();
+
+    // Sarlavhalarni yangilash
+    document.getElementById('detailEpTabTitle').textContent = `${epNum}-qism`;
+    document.getElementById('detailCurrentEpIndicator').textContent = `${epNum}-qism`;
+    
+    // Bot havolasini yangilash
+    const botEpLink = `https://t.me/aniratebot?start=ep${anime.id}n${epNum}`;
+    document.getElementById('detailTelegramBotLink').href = botEpLink;
+    document.getElementById('playerErrorBotLink').href = botEpLink;
+
+    // Grid tugmalarining active holatini yangilash
+    const buttons = document.querySelectorAll('#episodesGrid .ep-num-btn');
+    buttons.forEach(btn => {
+        const bEp = parseInt(btn.getAttribute('data-ep'));
+        if (bEp === epNum) {
+            btn.classList.add('active');
+            btn.style.border = '1px solid var(--primary)';
+            btn.style.background = 'linear-gradient(135deg, #E50914, #b81d24)';
+        } else {
+            btn.classList.remove('active');
+            btn.style.border = '1px solid var(--border-color)';
+            btn.style.background = 'rgba(255,255,255,0.04)';
+        }
+    });
+
+    const errorNotice = document.getElementById('playerErrorNotice');
+    if (errorNotice) errorNotice.style.display = 'none';
+
+    let videoUrl = ep.video_url || '';
+    if (!videoUrl) {
+        if (errorNotice) errorNotice.style.display = 'flex';
+        return;
     }
-    if (playerModal) playerModal.style.display = 'none';
+
+    // Yuklab olish tugmasini sozlash
+    const fileName = `${anime.title} — ${epNum}-qism.mp4`;
+    const dlBtn = document.getElementById('downloadCurrentEpBtn');
+    dlBtn.onclick = () => downloadCurrentAnimeEpisode(videoUrl, fileName);
+
+    // Video manbasini Plyr orqali yangilash
+    initPlyrPlayer();
+    if (plyrInstance) {
+        plyrInstance.source = {
+            type: 'video',
+            title: `${anime.title} — ${epNum}-qism`,
+            sources: [
+                {
+                    src: videoUrl,
+                    type: 'video/mp4'
+                }
+            ],
+            poster: anime.poster || ''
+        };
+
+        if (autoPlay) {
+            plyrInstance.play().catch(function(e) {
+                console.log('Autoplay prevented:', e);
+            });
+        }
+    } else {
+        const videoEl = document.getElementById('player');
+        if (videoEl) {
+            videoEl.src = videoUrl;
+            if (autoPlay) videoEl.play().catch(() => {});
+        }
+    }
 }
 
-function startEpisodeDownload(episode, anime) {
-    const rawUrl = episode.video_url || '';
-    if (!rawUrl) {
+function filterEpisodes() {
+    const input = document.getElementById('epSearchInput');
+    if (!input) return;
+    const query = input.value.trim().toLowerCase();
+    const buttons = document.querySelectorAll('#episodesGrid .ep-num-btn');
+    buttons.forEach(function(btn) {
+        const ep = btn.getAttribute('data-ep');
+        if (query === '' || ep.indexOf(query) !== -1) {
+            btn.style.display = 'flex';
+        } else {
+            btn.style.display = 'none';
+        }
+    });
+}
+
+function toggleTheaterMode() {
+    const wrapper = document.getElementById('videoTheaterWrapper');
+    const btn = document.getElementById('theaterModeBtn');
+    if (wrapper) {
+        wrapper.classList.toggle('theater-active');
+        if (btn) btn.classList.toggle('active', wrapper.classList.contains('theater-active'));
+    }
+}
+
+function toggleTheaterLights() {
+    document.body.classList.toggle('theater-lights-off');
+    const btn = document.getElementById('toggleLightsBtn');
+    if (btn) btn.classList.toggle('active', document.body.classList.contains('theater-lights-off'));
+}
+
+function shareCurrentAnime() {
+    if (!currentAnimeData || !currentAnimeData.anime) return;
+    const anime = currentAnimeData.anime;
+    const title = `${anime.title} — AniRate`;
+    const url = `https://anirate.wwwz.uz/anime.php?id=${anime.id}&ep=${currentEpNum}`;
+
+    if (navigator.share) {
+        navigator.share({ title: title, url: url }).catch(() => {});
+    } else {
+        navigator.clipboard.writeText(url).then(() => {
+            showNativeToast("Havola nusxalandi!");
+        }).catch(() => {
+            showNativeToast(url);
+        });
+    }
+}
+
+function downloadCurrentAnimeEpisode(url, filename) {
+    if (!url) {
         showNativeToast("Yuklab olish havolasi topilmadi");
         return;
     }
 
-    const fileName = `${anime.title} — ${episode.qism}-qism.mp4`.replace(/[\\/:*?"<>|]/g, '');
-    let downloadUrl = rawUrl;
-    if (!downloadUrl.includes('download=1')) {
-        downloadUrl += (downloadUrl.includes('?') ? '&' : '?') + 'download=1&name=' + encodeURIComponent(fileName);
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://anirate.wwwz.uz/' + (url.startsWith('/') ? url.slice(1) : url);
+    }
+    if (url.includes('episode-proxy.php')) {
+        if (!url.includes('download=')) {
+            url += (url.includes('?') ? '&' : '?') + 'download=1';
+        }
+        if (filename && !url.includes('name=')) {
+            url += '&name=' + encodeURIComponent(filename);
+        }
     }
 
     if (window.AniRateNative && typeof window.AniRateNative.downloadVideo === 'function') {
-        window.AniRateNative.downloadVideo(downloadUrl, fileName);
+        window.AniRateNative.downloadVideo(url, filename);
+    } else if (window.AndroidApp && typeof window.AndroidApp.downloadVideo === 'function') {
+        window.AndroidApp.downloadVideo(url, filename);
     } else {
-        window.location.href = downloadUrl;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => document.body.removeChild(a), 500);
     }
-    showNativeToast(`Yuklab olish boshlandi: ${episode.qism}-qism`);
+    showNativeToast(`Yuklab olish boshlandi: ${filename}`);
+}
+
+function updateWatchlistBtnState(animeId) {
+    try {
+        const list = JSON.parse(localStorage.getItem('animedia_watchlist') || '[]');
+        const exists = list.some(item => parseInt(item.id) === parseInt(animeId));
+        const btn = document.getElementById('detailWatchlistBtn');
+        const text = document.getElementById('detailWatchlistText');
+        if (btn && text) {
+            if (exists) {
+                btn.style.background = 'rgba(229, 9, 20, 0.2)';
+                btn.style.color = '#ff4d4d';
+                btn.style.borderColor = 'rgba(229, 9, 20, 0.5)';
+                text.textContent = 'Saqlangan';
+            } else {
+                btn.style.background = 'rgba(255, 255, 255, 0.08)';
+                btn.style.color = '#fff';
+                btn.style.borderColor = 'var(--border-color)';
+                text.textContent = 'Watchlist';
+            }
+        }
+    } catch (e) {}
+}
+
+function toggleCurrentWatchlist() {
+    if (!currentAnimeData || !currentAnimeData.anime) return;
+    const anime = currentAnimeData.anime;
+    try {
+        let list = JSON.parse(localStorage.getItem('animedia_watchlist') || '[]');
+        const idx = list.findIndex(item => parseInt(item.id) === parseInt(anime.id));
+        if (idx > -1) {
+            list.splice(idx, 1);
+            showNativeToast(`"${anime.title}" saqlanganlardan o'chirildi`);
+        } else {
+            list.push({ id: anime.id, title: anime.title, poster: anime.poster, added_at: new Date().toISOString() });
+            showNativeToast(`"${anime.title}" saqlanganlarga qo'shildi`);
+        }
+        localStorage.setItem('animedia_watchlist', JSON.stringify(list));
+        updateWatchlistBtnState(anime.id);
+        renderWatchlist();
+    } catch (e) {
+        console.error('Watchlist error:', e);
+    }
 }
 
 // =========================================================================
@@ -536,6 +905,16 @@ function playLocalVideo(filePath) {
         playerModal.style.display = 'flex';
         videoEl.play();
     }
+}
+
+function closePlayerModal() {
+    const playerModal = document.getElementById('playerModal');
+    const videoEl = document.getElementById('appVideoElement');
+    if (videoEl) {
+        videoEl.pause();
+        videoEl.src = '';
+    }
+    if (playerModal) playerModal.style.display = 'none';
 }
 
 function deleteLocalVideo(fileName) {
